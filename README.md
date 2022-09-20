@@ -13,12 +13,19 @@ Edit Makefile to set the following variables base on what libraries are
 available:
 
 USE_LIBSIXEL=1 or 0
+
 USE_AALIB=1 or 0
+
 USE_LIBCACA=1 or 0
+
 USE_FFMPEG=1 or 0
+
 USE_PORTAUDIO=1 or 0
+
 USE_QUANTPNM=1 or 0
+
 USE_DEBUG=1 or 0
+
 
 The only option that affect newdraw is USE_DEBUG, which enables certaind debugging
 output.  The other options affect imgconvert and vidconvert.  
