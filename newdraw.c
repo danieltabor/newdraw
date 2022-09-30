@@ -53,7 +53,12 @@ uint8_t lastinput[8];
 size_t lastinput_len;
 #endif
 
-#ifdef __linux__
+#if ( (!defined(TIOCGETA)) && defined(TCGETA) )
+#define TIOCGETA TCGETA
+#define TIOCSETA TCSETA
+#endif
+
+#if ( (!defined(TIOCGETA)) && defined(TCGETS) )
 #define TIOCGETA TCGETS
 #define TIOCSETA TCSETS
 #endif
@@ -1418,7 +1423,7 @@ int main(int argc, char** argv) {
 			}
 		}
 		else if( inputlen == 3 ) {
-			if( input[0] == 0x1B && input[1] == 0x5B ) {
+			if( input[0] == 0x1B && (input[1] == 0x5B || input[1] == 0x4F) ) {
 				if( input[2] >= DIRUP && input[2] <= DIRLT ) { //Arrow Keys
 					move_cursor(input[2]);
 				}

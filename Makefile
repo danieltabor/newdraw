@@ -62,13 +62,13 @@ endif
 all: $(DEPS)
 
 newdraw: newdraw.c Makefile utf8.h
-	$(CC) -o newdraw newdraw.c -static
+	$(CC) $(CFLAGS) -o newdraw newdraw.c -static
 
 imgconvert: imgconvert.c term_encode.c Makefile $(HDEPS)
-	$(CC) $(CDEFS) $(CFLAGS) -o imgconvert imgconvert.c term_encode.c $(IMG_LDFLAGS) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o imgconvert imgconvert.c term_encode.c $(IMG_LDFLAGS) $(LDFLAGS)
 
 vidconvert: vidconvert.c term_encode.c Makefile $(HDEPS)
-	$(CC) $(CDEFS) $(CFLAGS) -o vidconvert vidconvert.c term_encode.c  $(VID_LDFLAGS) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o vidconvert vidconvert.c term_encode.c  $(VID_LDFLAGS) $(LDFLAGS)
 
 clean:
 	rm -f newdraw 
