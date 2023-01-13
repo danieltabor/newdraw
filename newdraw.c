@@ -670,25 +670,28 @@ void load(char* path, int resize) {
 				//Read the cell into the canvas
 				cell = &(canvas[y*canvas_width+x]);
 				tmp = 0;
-				if( fread(&tmp,4,1,fp) != 1 ) { break; }
+				if( fread(&tmp,4,1,fp) != 1 ) { goto load_done; }
 				cell->fgcolor = ntohl(tmp);
-				if( fread(&tmp,4,1,fp) != 1 ) { break; }
+				if( fread(&tmp,4,1,fp) != 1 ) { goto load_done; }
 				cell->bgcolor = ntohl(tmp);
-				if( fread(&(cell->reverse),1,1,fp) != 1 ) { break; }
-				if( fread(&(cell->blink),1,1,fp) != 1 ) { break; }
-				if( fread(&(cell->bold),1,1,fp) != 1 ) { break; }
-				if( fread(&(cell->underline),1,1,fp) != 1 ) { break; }
-				if( fread(&(cell->line),1,1,fp) != 1 ) { break; }
+				if( fread(&(cell->reverse),1,1,fp) != 1 ) { goto load_done; }
+				if( fread(&(cell->blink),1,1,fp) != 1 ) { goto load_done; }
+				if( fread(&(cell->bold),1,1,fp) != 1 ) { goto load_done; }
+				if( fread(&(cell->underline),1,1,fp) != 1 ) { goto load_done; }
+				if( fread(&(cell->line),1,1,fp) != 1 ) { goto load_done; }
 				tmp = 0;
-				if( fread(&tmp,4,1,fp) != 1 ) { break; }
+				if( fread(&tmp,4,1,fp) != 1 ) { goto load_done; }
 				cell->character = ntohl(tmp);
+				printf("cell->character: 0x%08X\n",cell->character);
 			}
 			else {
 				//The cell falls outside the canvas, so skip it
-				fseek(fp,9,SEEK_CUR);
+				if( fseek(fp,17,SEEK_CUR) < 0 ) { goto load_done; }
 			}
 		}
 	}
+	load_done:
+	return;
 }
 
 void export() {
