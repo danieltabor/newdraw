@@ -212,7 +212,7 @@ static void binWriteCellIndex(term_encode_t *enc,
 	}
 	tmp = htonl(fg_index);
 	fwrite(&tmp,4,1,enc->binaryfp);
-	tmp = htonl(fg_index);
+	tmp = htonl(bg_index);
 	fwrite(&tmp,4,1,enc->binaryfp);
 	fwrite(&reverse,1,1,enc->binaryfp);
 	fwrite(&blink,1,1,enc->binaryfp);
