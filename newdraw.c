@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-#include <termios.h>
+#include <term.h>
 #include <errno.h>
 #include <arpa/inet.h>
 
@@ -51,16 +51,6 @@
 #ifdef DEBUG
 uint8_t lastinput[8];
 size_t lastinput_len;
-#endif
-
-#if ( (!defined(TIOCGETA)) && defined(TCGETA) )
-#define TIOCGETA TCGETA
-#define TIOCSETA TCSETA
-#endif
-
-#if ( (!defined(TIOCGETA)) && defined(TCGETS) )
-#define TIOCGETA TCGETS
-#define TIOCSETA TCSETS
 #endif
 
 //linechars[up][right][down][left][this]
@@ -524,7 +514,7 @@ void draw_line() {
 	update_line(cursor_x,cursor_y);
 }
 
-void delete_character() {
+void delete_cell() {
 	size_t i = (cursor_y)*canvas_width + cursor_x; //Cursor Position
 	size_t j = (cursor_y+1)*canvas_width - 1; //End of line
 	cell_t *cell;
@@ -548,7 +538,7 @@ void delete_character() {
 	}
 }
 
-void insert_character(uint32_t c) {
+void insert_cell(uint32_t c) {
 	size_t i = (cursor_y)*canvas_width + cursor_x; //Cursor Position
 	size_t j = (cursor_y+1)*canvas_width - 1; //End of line
 	cell_t *cell = &(canvas[i]);
@@ -1024,6 +1014,7 @@ void termSetup() {
 	int flags;
 	struct termios tios;
 	struct winsize ws;
+	TTY tty;
 	
 	//Use fcntl to make stdin NON-BLOCKING
 	if( (flags = fcntl(STDIN_FILENO, F_GETFL, 0)) < 0 ) {
@@ -1037,13 +1028,13 @@ void termSetup() {
 	}
 	
 	//Use ioctl/TCGETS to disable echo and line buffering (icannon)
-	if( ioctl(STDIN_FILENO, TIOCGETA, &tios)< 0 ) {
+	if( GET_TTY(STDIN_FILENO,&tty) < 0 ) {
 		fprintf(stderr,"Could not get termios flags: %s\n",strerror(errno));
 		exit(1);
 	}
-	tios.c_lflag &= ~ICANON;
-	tios.c_lflag &= ~ECHO;
-	if( ioctl(STDIN_FILENO, TIOCSETA, &tios) < 0 ) {
+	tty.c_lflag &= ~ICANON;
+	tty.c_lflag &= ~ECHO;
+	if( SET_TTY(STDIN_FILENO,&tty) < 0 ) {
 		fprintf(stderr,"Could not set termios flags: %s\n",strerror(errno));
 		exit(1);
 	}
@@ -1056,7 +1047,7 @@ void termSetup() {
 
 void termSetupReset() {
 	int flags;
-	struct termios tios;
+	TTY tty;
 	
 	printf("\x1b[2J\x1b[0;0H\x1b[0m");
 	
@@ -1072,13 +1063,13 @@ void termSetupReset() {
 	}
 	
 	//Use ioctl/TCGETS to enable echo and line buffering (icannon)
-	if( ioctl(STDIN_FILENO, TIOCGETA, &tios)< 0 ) {
+	if( GET_TTY(STDIN_FILENO,&tty) < 0 ) {
 		fprintf(stderr,"Could not get termios flags: %s\n",strerror(errno));
 		exit(1);
 	}
-	tios.c_lflag |= ICANON;
-	tios.c_lflag |= ECHO;
-	if( ioctl(STDIN_FILENO, TIOCSETA, &tios) < 0 ) {
+	tty.c_lflag |= ICANON;
+	tty.c_lflag |= ECHO;
+	if( SET_TTY(STDIN_FILENO,&tty) < 0 ) {
 		fprintf(stderr,"Could not set termios flags: %s\n",strerror(errno));
 		exit(1);
 	}
@@ -1406,19 +1397,19 @@ int main(int argc, char** argv) {
 					}
 					else if( input[0] > 0x30 && input[0] < 0x39 ) {
 						if( dos ) {
-							insert_character(codepage_437[(codepage+(input[0]-0x31))%256]);
+							insert_cell(codepage_437[(codepage+(input[0]-0x31))%256]);
 						} else {
-							insert_character(codepage+(input[0]-0x31));
+							insert_cell(codepage+(input[0]-0x31));
 						}
 					}
 				}
 				else {
-					insert_character(input[0]&0xFF);
+					insert_cell(input[0]&0xFF);
 				}
 			}
 			else if( input[0] == 0x7F ) { //Backspace
 				if( move_cursor(DIRLT) ) {
-					delete_character();
+					delete_cell();
 				}
 			}
 		}
@@ -1441,9 +1432,9 @@ int main(int argc, char** argv) {
 			else if( input[0] == 0x1B && input[2] == 0xB4 ) { //F1-F4
 				if( input[2] >= 0x50 && input[2] <= 0x53 ) {
 					if( dos ) {
-						insert_character(codepage_437[(codepage+(input[2]-0x50))%256]);;
+						insert_cell(codepage_437[(codepage+(input[2]-0x50))%256]);;
 					} else {
-						insert_character(codepage+(input[2]-0x50));
+						insert_cell(codepage+(input[2]-0x50));
 					}
 				}
 			}
@@ -1454,7 +1445,7 @@ int main(int argc, char** argv) {
 					insert = 1- insert;
 				}
 				else if( input[2] == 0x33 ) { //Delete
-					delete_character();
+					delete_cell();
 				}
 				else if( input[2] == 0x35 ) { //Page Up
 					for( i=0; i<win_height-2; i++ ) {
@@ -1476,9 +1467,9 @@ int main(int argc, char** argv) {
 					input[3]++;
 				}
 				if( dos ) {
-					insert_character(codepage_437[(codepage+(input[3]+3))%256]);
+					insert_cell(codepage_437[(codepage+(input[3]+3))%256]);
 				} else {
-					insert_character(codepage+(input[3]+3));
+					insert_cell(codepage+(input[3]+3));
 				}
 			}
 		}
