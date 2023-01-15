@@ -36,6 +36,7 @@
 #include <arpa/inet.h>
 
 #define UTF8_IMPLEMENTATION
+#define UTF8_EXT_CHARACTER_SETS
 #include "utf8.h"
 
 #define DIRNL 0x0A
@@ -301,7 +302,8 @@ uint8_t fgcolors[] = {30, 31, 32, 33, 34, 35, 36, 37,  90,  91,  92,  93,  94,  
 uint8_t bgcolors[] = {40, 41, 42, 43, 44, 45, 46, 47, 100, 101, 102, 103, 104, 105, 106, 107};
 uint8_t color_mode = CM_16;
 uint32_t codepage = 0x00002500;
-uint8_t dos = 0;
+uint32_t *charset = 0;
+size_t   charsetlen = 0;
 
 size_t win_width;
 size_t win_height;
@@ -325,6 +327,7 @@ uint8_t export_clear = 1;
 uint8_t export_path_len = 0;
 uint8_t fgcolor_input = 0;
 uint8_t bgcolor_input = 0;
+uint8_t codepage_input = 0;
 
 typedef struct {
 	uint32_t fgcolor;
@@ -941,6 +944,8 @@ void render() {
 			printf("B:");
 		}
 		printf("%d ",bgcolor&0XFF);
+	} else if( codepage_input ) {
+		printf(" Codepage:%X",codepage);
 	} else {
 		printf(" +/-");
 		printf(" 1 2 3 4 5 6 7 8  ");
@@ -980,11 +985,12 @@ void render() {
 		
 		
 		//Codpage
-		printf("\r\n 0x%04X",codepage&0xFFFF);
+		printf("\r\n %06X",codepage&0xFFFFFF);
 		for( i=0; i<8; i++ ) {
-			if( dos ) {
-				printf(" %s",utf8_encode(0,codepage_437[(codepage+i)%256]));
-			} else {
+			if( charset ) {
+				printf(" %s",utf8_encode(0,charset[(codepage+i)%charsetlen]));
+			}
+			else {
 				printf(" %s",utf8_encode(0,codepage+i));
 			}
 		}
@@ -1080,8 +1086,8 @@ void termSetupReset() {
 
 void usage(char* cmd) {
 	printf("Usage:\n");
-	printf("%s [-h] [-s width height] [-m 16|256|true] [-dos] [-c codepage(hex)]\n",cmd);
-	printf("      [-es] [-nec] binpath\n");
+	printf("%s [-h] [-s width height] [-m 16|256|true] [-c codepage(hex)]\n",cmd);
+	printf("      [-dos | -pet | -trs] [-es] [-nec] binpath\n");
 	printf("\n");
 	printf("  -h  : Print usage message\n");
 	printf("  -m  : Select color mode -\n");
@@ -1089,7 +1095,9 @@ void usage(char* cmd) {
 	printf("          256 color standard palette\n");
 	printf("         true color - 24 bit\n");
 	printf("  -dos: Use DOS character set (codepage 437)\n");
-	printf("        Exports are still in UTF-8\n");
+	printf("  -pet: Use PETSCI character set\n");
+	printf("  -trs: Use TRS-80 character set\n");
+	printf("        Experts are still in UTF-8\n");
 	printf("  -c  : Starting special character code page\n");
 	printf("  -es : DISABLE export of blank characters as spaces\n");
 	printf("  -ec : DISABLE export start with terminal clear\n");
@@ -1152,10 +1160,25 @@ int main(int argc, char** argv) {
 			}
 		}
 		else if( strcmp("-dos",argv[i]) == 0 ) {
-			if( dos ) {
+			if( charset ) {
 				usage(argv[0]);
 			}
-			dos = 1;
+			charset = cp437;
+			charsetlen = 256;
+		}
+		else if( strcmp("-pet",argv[i]) == 0 ) {
+			if( charset ) {
+				usage(argv[0]);
+			}
+			charset = petscii;
+			charsetlen = 512;
+		}
+		else if( strcmp("-trs",argv[i]) == 0 ) {
+			if( charset ) {
+				usage(argv[0]);
+			}
+			charset = trs80;
+			charsetlen = 192;
 		}
 		else if( strcmp("-es",argv[i]) == 0 ) {
 			export_spaces = 0;
@@ -1174,11 +1197,11 @@ int main(int argc, char** argv) {
 		i++;
 	}
 	
-	init_canvas();
-
-	if( dos ) {
-		codepage = codepage%256;
+	if( charset ) {
+		codepage = codepage%charsetlen;
 	}
+	
+	init_canvas();
 	
 	if( save_path_len != 0 ) {
 		load(save_path,size_specified);
@@ -1293,6 +1316,31 @@ int main(int argc, char** argv) {
 				*color = (*color&0x00FFFF00) | (value);
 			}
 		}
+		//Specify Codepage Manually
+		else if( codepage_input  ) {
+			if( inputlen == 1 ) {
+				if( input[0] >= 0x30 && input[0] <= 0x39 ) {
+					codepage = ((codepage * 16) + (input[0]-0x30));
+				}
+				else if( input[0] >= 0x41 && input[0] <= 0x46 ) {
+					codepage = ((codepage * 16 ) + (10 + input[0]-0x41));
+				}
+				else if( input[0] >= 0x61 && input[0] <= 0x66 ) {
+					codepage = ((codepage * 16 ) + (10 + input[0]-0x61));
+				}
+				else if( input[0] == 0x0A ) {
+					if( charset ) {
+						codepage = codepage % charsetlen;
+					}
+					codepage_input = 0;
+				}
+				else if( input[0] == 0x7F ) {
+					if( codepage ) { 
+						codepage = codepage / 16; 
+					}
+				}
+			}
+		}
 		//Regular Input
 		else if( inputlen == 1 ) {
 			if( input[0] == 0x0A ) {
@@ -1329,14 +1377,17 @@ int main(int argc, char** argv) {
 					}
 					else if( input[0] == '-' || input[0] == '_' ) {
 						codepage = codepage-8;
-						if( dos ) {
-							codepage = codepage % 256;
+						if( charset ) {
+							codepage = codepage % charsetlen;
 						}
+					}
+					else if( input[0] == '/' || input[0] == '?' ) {
+						codepage_input = 1;
 					}
 					else if( input[0] == '=' || input[0] == '+' ) {
 						codepage = codepage+8;
-						if( dos ) {
-							codepage = codepage % 256;
+						if( charset ) {
+							codepage = codepage % charsetlen;
 						}
 					}
 					else if( input[0] == 'f' ) { //Foreground color up
@@ -1399,9 +1450,10 @@ int main(int argc, char** argv) {
 						paste_block();
 					}
 					else if( input[0] > 0x30 && input[0] < 0x39 ) {
-						if( dos ) {
-							insert_cell(codepage_437[(codepage+(input[0]-0x31))%256]);
-						} else {
+						if( charset ) {
+							insert_cell(charset[(codepage+(input[0]-0x31))%charsetlen]);
+						}
+						else {
 							insert_cell(codepage+(input[0]-0x31));
 						}
 					}
@@ -1434,9 +1486,10 @@ int main(int argc, char** argv) {
 			}
 			else if( input[0] == 0x1B && input[2] == 0xB4 ) { //F1-F4
 				if( input[2] >= 0x50 && input[2] <= 0x53 ) {
-					if( dos ) {
-						insert_cell(codepage_437[(codepage+(input[2]-0x50))%256]);;
-					} else {
+					if( charset ) {
+						insert_cell(charset[(codepage+(input[2]-0x50))%charsetlen]);
+					}
+					else {
 						insert_cell(codepage+(input[2]-0x50));
 					}
 				}
@@ -1469,9 +1522,10 @@ int main(int argc, char** argv) {
 				if( ! input[3] ) { //F5 is one less than expected
 					input[3]++;
 				}
-				if( dos ) {
-					insert_cell(codepage_437[(codepage+(input[3]+3))%256]);
-				} else {
+				if( charset ) {
+					insert_cell(charset[(codepage+(input[3]+3))%charsetlen]);
+				}
+				else {
 					insert_cell(codepage+(input[3]+3));
 				}
 			}

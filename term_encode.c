@@ -37,6 +37,7 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize.h"
 #define UTF8_IMPLEMENTATION
+#define UTF8_DOS_CHARACTER_SET
 #include "utf8.h"
 #define QUANT_IMPLEMENTATION
 #ifdef USE_QUANTPNM
@@ -691,7 +692,7 @@ static int asciiEncode( term_encode_t* enc, int extended) {
 	last_attr = AA_NORMAL;
 		for( x=0; x<char_width; x++ ) {
 			attr = aa->attrbuffer[y*char_width+x];
-			c = codepage_437[aa->textbuffer[y*char_width+x]];
+			c = cp437[aa->textbuffer[y*char_width+x]];
 			utf8c = utf8_encode(0,c);
 			reverse = (attr == AA_REVERSE);
 			bold = (attr == AA_BOLD);
@@ -781,7 +782,7 @@ static int asciiColorEncode( term_encode_t* enc, uint8_t color_type, int extende
 			}
 			rgb = (r<<16)|(g<<8)|(b);
 			attr = aa->attrbuffer[hy*char_width+hx];
-			c = codepage_437[aa->textbuffer[hy*char_width+hx]];
+			c = cp437[aa->textbuffer[hy*char_width+hx]];
 			utf8c = utf8_encode(0,c);
 			reverse = (attr == AA_REVERSE);
 			bold = (attr == AA_BOLD);
