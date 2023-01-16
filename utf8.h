@@ -124,44 +124,79 @@ uint32_t trs80[192] = {
 };
 #endif //UTF8_EXT_CHARACTER_SETS
 
+//UTF-8 Encoding
+// +=========================+==============+==============+==============+==============+==============+==============+==============+==============+
+// |uint32_t character (hex) | Byte 0 (bin) | Byte 1 (bin) | Byte 2 (bin) | Byte 3 (bin) | Byte 4 (bin) | Byte 5 (bin) | Byte 6 (bin) | Byte 7 (bin) |
+// +=========================|==============+==============+==============+==============+==============+==============+==============+==============+
+// |  0000 0000 - 0000 007F  |   0xxxxxxx   |    (null)    |              |              |              |              |              |              |
+// |  0000 0080 - 0000 07FF  |   110xxxxx   |   10xxxxxx   |    (null)    |              |              |              |              |              |
+// |  0000 0800 - 0000 FFFF  |   1110xxxx   |   10xxxxxx   |   10xxxxxx   |    (null)    |              |              |              |              |
+// |  0001 0000 - 001F FFFF  |   11110xxx   |   10xxxxxx   |   10xxxxxx   |   10xxxxxx   |    (null)    |              |              |              |
+// +=========================+==============+==============+==============+==============+==============+==============+==============+==============+
+// |  0002 0000 - 03FF FFFF  |   111110xx   |   10xxxxxx   |   10xxxxxx   |   10xxxxxx   |   10xxxxxx   |    (null)    |              |              |
+// |  0400 0000 - 7FFF FFFF  |   1111110x   |   10xxxxxx   |   10xxxxxx   |   10xxxxxx   |   10xxxxxx   |   10xxxxxx   |    (null)    |              |
+// |  8000 0000 - FFFF FFFF  |   11111110   |   100000xx   |   10xxxxxx   |   10xxxxxx   |   10xxxxxx   |   10xxxxxx   |   10xxxxxx   |    (null)    |
+// +=========================+==============+==============+==============+==============+==============+==============+==============+==============+
+//
+// Unicode character are really only valid upto 0x10FFFF, but this function
+// encodes any 32bit value.
 static char utf8_encoded_character[8];
 char* utf8_encode(char* dst, uint32_t character) {
-	uint8_t bits = 0;
-	uint8_t encode_bytes;
-	uint8_t first_byte_bits;
-	uint32_t tmp;
+	uint8_t shift;
 	uint8_t i;
-	tmp = character;
-	while( tmp ) {
-		bits++;
-		tmp = tmp >> 1;
-	}
-
-	first_byte_bits = 7;
-	encode_bytes = 0;
-	tmp = bits;
-	while( tmp > first_byte_bits ) {
-		tmp = tmp - 6;
-		encode_bytes++;
-		first_byte_bits--;
-	}
-	encode_bytes++;
-	first_byte_bits--;
-
+	
 	if( dst == 0 ) {
 		dst = utf8_encoded_character;
 	}
-	dst[encode_bytes] = 0;
-	if( encode_bytes > 1 ) {
-		tmp = character;
-		for( i=encode_bytes-1; i>0; i-- ) {
-			dst[i] = 0x80 | (tmp & 0x3F);
-			tmp = tmp >> 6;
-		}
-		dst[0] = (0xFE << first_byte_bits) | (tmp & (0xFF>>(8-first_byte_bits)));
+	
+	if( character >= 0x8000000 ) {
+		dst[0] = 0b11111110;
+		dst[1] = 0b10000000 | ((character>>30)&0b00000011);
+		dst[2] = 0b10000000 | ((character>>24)&0b00111111);
+		dst[3] = 0b10000000 | ((character>>18)&0b00111111);
+		dst[4] = 0b10000000 | ((character>>12)&0b00111111);
+		dst[5] = 0b10000000 | ((character>> 6)&0b00111111);
+		dst[6] = 0b10000000 | ((character>> 0)&0b00111111);
+		dst[7] = 0;
 	}
-	else {
-		dst[0] = character&0xFF;
+	else if( character >= 0x04000000 ) {
+		dst[0] = 0b11111100 | ((character>>30)&0b00000001);
+		dst[1] = 0b10000000 | ((character>>24)&0b00111111);
+		dst[2] = 0b10000000 | ((character>>18)&0b00111111);
+		dst[3] = 0b10000000 | ((character>>12)&0b00111111);
+		dst[4] = 0b10000000 | ((character>> 6)&0b00111111);
+		dst[5] = 0b10000000 | ((character>> 0)&0b00111111);
+		dst[6] = 0;
+	}
+	else if( character >= 0x00020000 ) {
+		dst[0] = 0b11111000 | ((character>>24)&0b00000011);
+		dst[1] = 0b10000000 | ((character>>18)&0b00111111);
+		dst[2] = 0b10000000 | ((character>>12)&0b00111111);
+		dst[3] = 0b10000000 | ((character>> 6)&0b00111111);
+		dst[4] = 0b10000000 | ((character>> 0)&0b00111111);
+		dst[5] = 0;
+	}
+	else if( character >= 0x00010000 ) {
+		dst[0] = 0b11110000 | ((character>>18)&0b00000111);
+		dst[1] = 0b10000000 | ((character>>12)&0b00111111);
+		dst[2] = 0b10000000 | ((character>> 6)&0b00111111);
+		dst[3] = 0b10000000 | ((character>> 0)&0b00111111);
+		dst[4] = 0;
+	}
+	else if( character >= 0x00000800 ) {
+		dst[0] = 0b11100000 | ((character>>12)&0b00001111);
+		dst[1] = 0b10000000 | ((character>> 6)&0b00111111);
+		dst[2] = 0b10000000 | ((character>> 0)&0b00111111);
+		dst[3] = 0;
+	}
+	else if( character >= 0x00000080 ) {
+		dst[0] = 0b11000000 | ((character>> 6)&0b00011111);
+		dst[1] = 0b10000000 | ((character>> 0)&0b00111111);
+		dst[2] = 0;
+	}
+	else { // character >= 0 
+		dst[0] = 0b00000000 | ((character>> 0)&0b01111111);
+		dst[1] = 0;
 	}
 	return dst;
 }
