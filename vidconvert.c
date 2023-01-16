@@ -708,7 +708,7 @@ int main(int argc, char** argv) {
 			if( enc.renderer ) {
 				usage(argv[0]);
 			}
-			enc.renderer = ENC_RENDER_QCHAR;
+			enc.renderer = ENC_RENDER_QUARTER;
 		}
 		#ifdef USE_AALIB
 		else if( strcmp(argv[i],"-aadl") == 0 ) {
@@ -936,7 +936,7 @@ int main(int argc, char** argv) {
 			//Adjust the scale width based upon the selected renderer
 			//This a bit of a cheat to prevent term_encode from resizing the image later
 			//to accomodate specific renderers.
-			if( enc.renderer >= ENC_RENDER_QCHAR && enc.renderer <= ENC_RENDER_AABGEXT ) {
+			if( enc.renderer >= ENC_RENDER_QUARTER && enc.renderer <= ENC_RENDER_AABGEXT ) {
 				scale_width = scale_width*2;
 			}
 			#ifdef DEBUG

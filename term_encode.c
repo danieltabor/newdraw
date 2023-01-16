@@ -428,27 +428,30 @@ static void ansiEncodeHalfHeight( term_encode_t* enc) {
 	}
 }
 
-static void ansiEncodeQuarter( term_encode_t* enc, uint8_t quant ) {
+uint16_t quarter_chars[16] = { 
+	0x0020, 0x2597, 0x2596, 0x2584, 0x259D, 0x2590, 0x259E, 0x259F, 
+	0x2598, 0x259A, 0x258C, 0x2599, 0x2580, 0x259C, 0x259B, 0x2588 
+};
+static void ansiEncodeQuarter( term_encode_t* enc, uint8_t bw ) {
 	uint8_t *prgb;
 	int last_fg_rgb;
 	int last_bg_rgb;
 	int fg_rgb;
 	int bg_rgb;
-	int rgb[4];
 	
 	int r, g, b;
-	size_t i;
 	size_t hx,x;
 	size_t hy,y;
 	uint32_t binchar;
-	char* ansichar;
 	
 	uint8_t pal2[6];
 	size_t pal2size;
 	uint8_t pal4pixels[4];
 	uint8_t rgb4pixels[12];
 	uint8_t *prgb4;
-
+	
+	uint8_t idx;
+	
 	if( enc->encbinary ) {
 		binWriteHeader(enc,enc->width/2,enc->height/2);
 	}
@@ -458,132 +461,195 @@ static void ansiEncodeQuarter( term_encode_t* enc, uint8_t quant ) {
 	}
 	for( hy=0; hy<enc->height/2; hy++ ) {
 		y = hy*2;
-		for( i=0; i<4; i++ ) {
-			last_fg_rgb = -1;
-			last_bg_rgb = -1;
-		}
+		last_fg_rgb = -1;
+		last_bg_rgb = -1;
 		for( hx=0; hx<enc->width/2; hx++ ) {
 			x = hx*2;
-			//rgb x=0 y=0
-			prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
-			prgb4 = &(rgb4pixels[0]);
-		 	*(prgb4)   = *(prgb);
-			*(++prgb4) = *(++prgb);
-			*(++prgb4) = *(++prgb);
-			//rgb x=1 y=0
-			*(++prgb4) = *(++prgb);
-			*(++prgb4) = *(++prgb);
-			*(++prgb4) = *(++prgb);
-			//rgb x=0 y=1
-			prgb = &(enc->rgbpixels[3*((y+1)*enc->width+x)]);
-			*(++prgb4)   = *(prgb);
-			*(++prgb4) = *(++prgb);
-			*(++prgb4) = *(++prgb);
-			//rgb x=1 y=1
-			*(++prgb4) = *(++prgb);
-			*(++prgb4) = *(++prgb);
-			*(++prgb4) = *(++prgb);
 			
-			//Quatize this block down to 2 colors
-			if( quant ) {
-				pal2size = 2;
-				quant_quantize(pal2,&pal2size,
-							   pal4pixels, rgb4pixels, 4, 1);
-			}
-			
-			//rgb x=0 y=0
-			prgb4 = &(rgb4pixels[0]);
-			r = *(prgb4);
-			g = *(++prgb4);
-			b = *(++prgb4);
-			rgb[0] = (r<<16)|(g<<8)|(b);
-			//rgb x=1 y=0
-			r = *(++prgb4);
-			g = *(++prgb4);
-			b = *(++prgb4);
-			rgb[1] = (r<<16)|(g<<8)|(b);
-			//rgb x=0 y=1
-			r = *(++prgb4);
-			g = *(++prgb4);
-			b = *(++prgb4);
-			rgb[2] = (r<<16)|(g<<8)|(b);
-			//rgb x=1 y=1
-			r = *(++prgb4);
-			g = *(++prgb4);
-			b = *(++prgb4);
-			rgb[3] = (r<<16)|(g<<8)|(b);
-			
-			//Character and color selection
-			if( rgb[0] == rgb[1] && rgb[1] == rgb[3] && rgb[0] != rgb[2] ) {
-				binchar = 0x2596;
-				ansichar = "\xe2\x96\x96";
-				fg_rgb = rgb[2];
-				bg_rgb = rgb[0];
-			}
-			else if( rgb[0] == rgb[1] && rgb[1] == rgb[2] && rgb[0] != rgb[3] ) {
-				binchar = 0x2597;
-				ansichar = "\xe2\x96\x97";
-				fg_rgb = rgb[3];
-				bg_rgb = rgb[0];
-			}
-			else if( rgb[1] == rgb[2] && rgb[2] == rgb[3] && rgb[0] != rgb[1] ) {
-				binchar = 0x2598;
-				ansichar = "\xe2\x96\x98";
-				fg_rgb = rgb[0];
-				bg_rgb = rgb[1];
-			}
-			else if( rgb[0] == rgb[2] && rgb[2] == rgb[3] && rgb[0] != rgb[1] ) {
-				binchar = 0x259d;
-				ansichar = "\xe2\x96\x9d";
-				fg_rgb = rgb[1];
-				bg_rgb = rgb[0];
-			}
-			else if( rgb[0] == rgb[2] && rgb[1] == rgb[3] && rgb[0] != rgb[1] ) {
-				binchar = 0x258a;
-				ansichar = "\xe2\x96\x8a";
-				fg_rgb = rgb[0];
-				bg_rgb = rgb[1];
-			}
-			else if( rgb[0] == rgb[1] && rgb[2] == rgb[3] && rgb[0] != rgb[2] ) {
-				binchar = 0x2580;
-				ansichar = "\xe2\x96\x80";
-				fg_rgb = rgb[0];
-				bg_rgb = rgb[2];
-			}
-			else if( rgb[0] == rgb[3] && rgb[1] == rgb[2] && rgb[0] != rgb[1] ) {
-				binchar = 0x259a;
-				ansichar = "\xe2\x96\x9a";
-				fg_rgb = rgb[0];
-				bg_rgb = rgb[1];
+			if( bw ) {
+				idx = (enc->rgbpixels[3*(y*enc->width+x)]&1);
+				idx = (idx<<1) | (enc->rgbpixels[3*(y*enc->width+(x+1))]&1);
+				idx = (idx<<1) | (enc->rgbpixels[3*((y+1)*enc->width+x)]&1);
+				idx = (idx<<1) | (enc->rgbpixels[3*((y+1)*enc->width+(x+1))]&1);
+				binchar = quarter_chars[idx];
 			}
 			else {
-				//If more than 2 colors are represented in this
-				//block, then blend them into 1 color, or select the color at x=0,y=0.
-				//This will only happend if quant==0.
-				binchar = 0x0020;
-				ansichar = " ";
-				fg_rgb = last_fg_rgb;
-				if( ! enc->palsize ) {
-					r = (((rgb[0]>>16)&0xFF) + ((rgb[1]>>16)&0xFF) + ((rgb[2]>>16)&0xFF) + ((rgb[3]>>16)&0xFF)) / 4;
-					g = (((rgb[0]>>8)&0xFF) + ((rgb[1]>>8)&0xFF) + ((rgb[2]>>8)&0xFF) + ((rgb[3]>>8)&0xFF)) / 4;
-					b = ((rgb[0]&0xFF) + (rgb[1]&0xFF) + (rgb[2]&0xFF) + (rgb[3]&0xFF)) / 4;
-					bg_rgb = ((r&0xFF)<<16) | ((g&0xFF)<<8) | (b&0xFF);
-				}
-				else {
-					bg_rgb = rgb[0];
-				}
+				//rgb x=0 y=0
+				prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
+				prgb4 = &(rgb4pixels[0]);
+				*(prgb4)   = *(prgb);
+				*(++prgb4) = *(++prgb);
+				*(++prgb4) = *(++prgb);
+				//rgb x=1 y=0
+				*(++prgb4) = *(++prgb);
+				*(++prgb4) = *(++prgb);
+				*(++prgb4) = *(++prgb);
+				//rgb x=0 y=1
+				prgb = &(enc->rgbpixels[3*((y+1)*enc->width+x)]);
+				*(++prgb4)   = *(prgb);
+				*(++prgb4) = *(++prgb);
+				*(++prgb4) = *(++prgb);
+				//rgb x=1 y=1
+				*(++prgb4) = *(++prgb);
+				*(++prgb4) = *(++prgb);
+				*(++prgb4) = *(++prgb);
+
+				//Quatize this block down to 2 colors
+				pal2size = 2;
+				quant_quantize(pal2,&pal2size,
+							   pal4pixels, rgb4pixels, 4, 0);
+				idx = (pal4pixels[0]<<3) | (pal4pixels[1]<<2) | (pal4pixels[2]<<1) | pal4pixels[3];
+				binchar = quarter_chars[idx];
+				prgb = pal2;
+				r = *(prgb);
+				g = *(++prgb);
+				b = *(++prgb);
+				bg_rgb = (r<<16)|(g<<8)|(b);
+				r = *(++prgb);
+				g = *(++prgb);
+				b = *(++prgb);
+				fg_rgb = (r<<16)|(g<<8)|(b);
 			}
 
 			if( enc->enctext ) {
-				if( last_fg_rgb != fg_rgb ) {
-					ansiSetColorRGB(enc,ENC_FGCOLOR,fg_rgb);
-					last_fg_rgb = fg_rgb;
+				if( ! bw ) {
+					if( last_fg_rgb != fg_rgb ) {
+						ansiSetColorRGB(enc,ENC_FGCOLOR,fg_rgb);
+						last_fg_rgb = fg_rgb;
+					}
+					if( last_bg_rgb != bg_rgb ) {
+						ansiSetColorRGB(enc,ENC_BGCOLOR,bg_rgb);
+						last_bg_rgb = bg_rgb;
+					}
 				}
-				if( last_bg_rgb != bg_rgb ) {
-					ansiSetColorRGB(enc,ENC_BGCOLOR,bg_rgb);
-					last_bg_rgb = bg_rgb;
+				fprintf(enc->textfp,"%s",utf8_encode(0,binchar));
+			}
+			if( enc->encbinary ) {
+				binWriteCellRGB(enc,fg_rgb,bg_rgb,0,0,0,0,binchar);
+			}
+		}
+		if( enc->enctext ) {
+			fprintf(enc->textfp,"\x1b[0m\r\n");
+		}
+	}
+	
+	if( enc->encbinary ) {
+		binClose(enc);
+	}
+}
+
+uint32_t sextant_chars[64] = {
+	0x00020,0x1FB1E,0x1FB0F,0x1FB2D,0x1FB07,0x1FB26,0x1FB16,0x1FB35,
+	0x1FB03,0x1FB22,0x1FB13,0x1FB31,0x1FB0B,0x1FB29,0x1FB1A,0x1FB39,
+	0x1FB01,0x1FB20,0x1FB11,0x1FB2F,0x1FB09,0x02590,0x1FB18,0x1FB37,
+	0x1FB05,0x1FB24,0x1FB14,0x1FB33,0x1FB0D,0x1FB2B,0x1FB1C,0x1FB3B,
+	0x1FB00,0x1FB1F,0x1FB10,0x1FB2E,0x1FB08,0x1FB27,0x1FB17,0x1FB36,
+	0x1FB04,0x1FB23,0x0258C,0x1FB32,0x1FB0C,0x1FB2A,0x1FB1B,0x1FB3A,
+	0x1FB02,0x1FB21,0x1FB12,0x1FB30,0x1FB0A,0x1FB28,0x1FB19,0x1FB38,
+	0x1FB06,0x1FB25,0x1FB15,0x1FB34,0x1FB0E,0x1FB2C,0x1FB1D,0x02588
+};
+static void ansiEncodeSextant( term_encode_t* enc, uint8_t bw ) {
+	uint8_t *prgb;
+	int last_fg_rgb;
+	int last_bg_rgb;
+	int fg_rgb;
+	int bg_rgb;
+	
+	int r, g, b;
+	size_t hx,x;
+	size_t hy,y;
+	uint32_t binchar;
+	
+	uint8_t pal2[6];
+	size_t pal2size;
+	uint8_t pal6pixels[6];
+	uint8_t rgb6pixels[18];
+	uint8_t *prgb6;
+	
+	uint8_t idx;
+	
+	if( enc->encbinary ) {
+		binWriteHeader(enc,enc->width/2,enc->height/2);
+	}
+	
+	if( enc->enctext ) {
+		fprintf(enc->textfp,"\x1b[0m");
+	}
+	for( hy=0; hy<enc->height/3; hy++ ) {
+		y = hy*3;
+		last_fg_rgb = -1;
+		last_bg_rgb = -1;
+		for( hx=0; hx<enc->width/2; hx++ ) {
+			x = hx*2;
+			
+			if( bw ) {
+				idx = (enc->rgbpixels[3*(y*enc->width+x)]&1);
+				idx = (idx<<1) | (enc->rgbpixels[3*(y*enc->width+(x+1))]&1);
+				idx = (idx<<1) | (enc->rgbpixels[3*((y+1)*enc->width+x)]&1);
+				idx = (idx<<1) | (enc->rgbpixels[3*((y+1)*enc->width+(x+1))]&1);
+				idx = (idx<<1) | (enc->rgbpixels[3*((y+2)*enc->width+x)]&1);
+				idx = (idx<<1) | (enc->rgbpixels[3*((y+2)*enc->width+(x+1))]&1);
+				binchar = sextant_chars[idx];
+			}
+			else {
+				//rgb x=0 y=0
+				prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
+				prgb6 = &(rgb6pixels[0]);
+				*(prgb6)   = *(prgb);
+				*(++prgb6) = *(++prgb);
+				*(++prgb6) = *(++prgb);
+				//rgb x=1 y=0
+				*(++prgb6) = *(++prgb);
+				*(++prgb6) = *(++prgb);
+				*(++prgb6) = *(++prgb);
+				//rgb x=0 y=1
+				prgb = &(enc->rgbpixels[3*((y+1)*enc->width+x)]);
+				*(++prgb6)   = *(prgb);
+				*(++prgb6) = *(++prgb);
+				*(++prgb6) = *(++prgb);
+				//rgb x=1 y=1
+				*(++prgb6) = *(++prgb);
+				*(++prgb6) = *(++prgb);
+				*(++prgb6) = *(++prgb);
+				//rgb x=0 y=2
+				prgb = &(enc->rgbpixels[3*((y+2)*enc->width+x)]);
+				*(++prgb6)   = *(prgb);
+				*(++prgb6) = *(++prgb);
+				*(++prgb6) = *(++prgb);
+				//rgb x=1 y=2
+				*(++prgb6) = *(++prgb);
+				*(++prgb6) = *(++prgb);
+				*(++prgb6) = *(++prgb);
+
+				//Quatize this block down to 2 colors
+				pal2size = 2;
+				quant_quantize(pal2,&pal2size,
+							   pal6pixels, rgb6pixels, 6, 0);
+				idx = (pal6pixels[0]<<5) | (pal6pixels[1]<<4) | (pal6pixels[2]<<3) | (pal6pixels[3]<<2) | (pal6pixels[4]<<1) | pal6pixels[5];
+				binchar = sextant_chars[idx];
+				prgb = pal2;
+				r = *(prgb);
+				g = *(++prgb);
+				b = *(++prgb);
+				bg_rgb = (r<<16)|(g<<8)|(b);
+				r = *(++prgb);
+				g = *(++prgb);
+				b = *(++prgb);
+				fg_rgb = (r<<16)|(g<<8)|(b);
+			}
+
+			if( enc->enctext ) {
+				if( ! bw ) {
+					if( last_fg_rgb != fg_rgb ) {
+						ansiSetColorRGB(enc,ENC_FGCOLOR,fg_rgb);
+						last_fg_rgb = fg_rgb;
+					}
+					if( last_bg_rgb != bg_rgb ) {
+						ansiSetColorRGB(enc,ENC_BGCOLOR,bg_rgb);
+						last_bg_rgb = bg_rgb;
+					}
 				}
-				fprintf(enc->textfp,"%s",ansichar);
+				fprintf(enc->textfp,"%s",utf8_encode(0,binchar));
 			}
 			if( enc->encbinary ) {
 				binWriteCellRGB(enc,fg_rgb,bg_rgb,0,0,0,0,binchar);
@@ -1303,9 +1369,13 @@ int term_encode(term_encode_t* enc) {
 		if( prepImage(enc,enc->win_width,1) ) { return 1; }
 		ansiEncodeHalfHeight( enc );
 	}
-	else if( enc->renderer == ENC_RENDER_QCHAR ) {
+	else if( enc->renderer == ENC_RENDER_QUARTER ) {
 		if( prepImage(enc,enc->win_width*2,0) ) { return 1; }
-		ansiEncodeQuarter( enc, 1 );
+		ansiEncodeQuarter( enc, 0 );
+	}
+	else if( enc->renderer == ENC_REDNER_SEXTANT ) {
+		if( prepImage(enc,enc->win_width*3/2,0) ) { return 1; }
+		ansiEncodeSextant( enc, 0 );
 	}
 	#ifdef USE_AALIB
 	else if( enc->renderer == ENC_RENDER_AA ) {

@@ -66,9 +66,10 @@ static void usage(char* cmd) {
 	fprintf(stderr,"-sixel  : Sixel\n");
 	#endif //USE_LIBSIXEL
 	fprintf(stderr,"-simple : ANSI Simple\n");
-	fprintf(stderr,"-half   : ANSI Half-Height\n");
+	fprintf(stderr,"-half   : ANSI Half-Character\n");
 	fprintf(stderr,"-double : ANSI Double-Line\n");
 	fprintf(stderr,"-qchar  : ANSI Quarter-Character\n");
+	fprintf(stderr,"-six    : ANSI Sextant-Character\n");
 	#ifdef USE_AALIB
 	fprintf(stderr,"-aa     : ASCII Art\n");
 	fprintf(stderr,"-aaext  : ASCII Art with extended characters\n");
@@ -272,7 +273,13 @@ int main(int argc, char** argv) {
 			if( enc.renderer ) {
 				usage(argv[0]);
 			}
-			enc.renderer = ENC_RENDER_QCHAR;
+			enc.renderer = ENC_RENDER_QUARTER;
+		}
+		else if( strcmp(argv[i],"-six") == 0 ) {
+			if( enc.renderer ) {
+				usage(argv[0]);
+			}
+			enc.renderer = ENC_REDNER_SEXTANT;
 		}
 		#ifdef USE_AALIB
 		else if( strcmp(argv[i],"-aa") == 0 ) {
