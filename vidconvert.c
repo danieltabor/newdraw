@@ -439,6 +439,7 @@ static void usage(char* cmd) {
 	fprintf(stderr,"-half    : ANSI Half-Height\n");
 	fprintf(stderr,"-double  : ANSI Double-Line\n");
 	fprintf(stderr,"-qchar   : ANSI Quarter-Character\n");
+	fprintf(stderr,"-six     : ANSI Sextant-Character\n");
 	#ifdef USE_AALIB
 	fprintf(stderr,"-aadl    : ASCII Art Double-Line\n");
 	fprintf(stderr,"-aadlext : ASCII Art Double-Line with extended characaters\n");
@@ -710,6 +711,12 @@ int main(int argc, char** argv) {
 			}
 			enc.renderer = ENC_RENDER_QUARTER;
 		}
+		else if( strcmp(argv[i],"-six") == 0 ) {
+			if( enc.renderer ) {
+				usage(argv[0]);
+			}
+			enc.renderer = ENC_RENDER_SEXTANT;
+		}
 		#ifdef USE_AALIB
 		else if( strcmp(argv[i],"-aadl") == 0 ) {
 			if( enc.renderer ) {
@@ -936,7 +943,10 @@ int main(int argc, char** argv) {
 			//Adjust the scale width based upon the selected renderer
 			//This a bit of a cheat to prevent term_encode from resizing the image later
 			//to accomodate specific renderers.
-			if( enc.renderer >= ENC_RENDER_QUARTER && enc.renderer <= ENC_RENDER_AABGEXT ) {
+			if( enc.renderer == ENC_RENDER_SEXTANT ) {
+				scale_width = scale_width*3/2;
+			}
+			else if( enc.renderer >= ENC_RENDER_QUARTER && enc.renderer <= ENC_RENDER_AABGEXT ) {
 				scale_width = scale_width*2;
 			}
 			#ifdef DEBUG

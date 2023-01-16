@@ -37,7 +37,7 @@
 #define ENC_RENDER_DOUBLE     3
 #define ENC_RENDER_HALF       4
 #define ENC_RENDER_QUARTER    5
-#define ENC_REDNER_SEXTANT    6
+#define ENC_RENDER_SEXTANT    6
 #define ENC_RENDER_AA         7
 #define ENC_RENDER_AAEXT      8
 #define ENC_RENDER_AADL       9

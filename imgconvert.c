@@ -279,7 +279,7 @@ int main(int argc, char** argv) {
 			if( enc.renderer ) {
 				usage(argv[0]);
 			}
-			enc.renderer = ENC_REDNER_SEXTANT;
+			enc.renderer = ENC_RENDER_SEXTANT;
 		}
 		#ifdef USE_AALIB
 		else if( strcmp(argv[i],"-aa") == 0 ) {

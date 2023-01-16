@@ -1373,7 +1373,7 @@ int term_encode(term_encode_t* enc) {
 		if( prepImage(enc,enc->win_width*2,0) ) { return 1; }
 		ansiEncodeQuarter( enc, 0 );
 	}
-	else if( enc->renderer == ENC_REDNER_SEXTANT ) {
+	else if( enc->renderer == ENC_RENDER_SEXTANT ) {
 		if( prepImage(enc,enc->win_width*3/2,0) ) { return 1; }
 		ansiEncodeSextant( enc, 0 );
 	}
