@@ -67,19 +67,16 @@ static void usage(char* cmd) {
 	#endif //USE_LIBSIXEL
 	fprintf(stderr,"-simple : ANSI Simple\n");
 	fprintf(stderr,"-half   : ANSI Half-Character\n");
-	fprintf(stderr,"-double : ANSI Double-Line\n");
 	fprintf(stderr,"-qchar  : ANSI Quarter-Character\n");
 	fprintf(stderr,"-six    : ANSI Sextant-Character\n");
 	#ifdef USE_AALIB
 	fprintf(stderr,"-aa     : ASCII Art\n");
 	fprintf(stderr,"-aaext  : ASCII Art with extended characters\n");
-	fprintf(stderr,"-aadl   : ASCII Art Double-Line\n");
-	fprintf(stderr,"-aadlext: ASCII Art Double-Line with extended characaters\n");
-	fprintf(stderr,"-aafg   : ASCII Art Dobule-Line with Foreground Color\n");
-	fprintf(stderr,"-aafgext: ASCII Art Dobule-Line with Foreground Color and\n");
+	fprintf(stderr,"-aafg   : ASCII Art with Foreground Color\n");
+	fprintf(stderr,"-aafgext: ASCII Art with Foreground Color and\n");
 	fprintf(stderr,"          extended characters\n");
-	fprintf(stderr,"-aabg   : ASCII Art Double-Line with Background Color\n");
-	fprintf(stderr,"-aabgext: ASCII Art Double-Line with Background Color and\n");
+	fprintf(stderr,"-aabg   : ASCII Art with Background Color\n");
+	fprintf(stderr,"-aabgext: ASCII Art with Background Color and\n");
 	fprintf(stderr,"          extended characters\n");
 	#endif //USE_AALIB
 	#ifdef USE_LIBCACA
@@ -257,12 +254,6 @@ int main(int argc, char** argv) {
 			}
 			enc.renderer = ENC_RENDER_SIMPLE;
 		}
-		else if( strcmp(argv[i],"-double") == 0 ) {
-			if( enc.renderer ) {
-				usage(argv[0]);
-			}
-			enc.renderer = ENC_RENDER_DOUBLE;
-		}
 		else if( strcmp(argv[i],"-half") == 0 ) {
 			if( enc.renderer ) {
 				usage(argv[0]);
@@ -293,24 +284,6 @@ int main(int argc, char** argv) {
 				usage(argv[0]);
 			}
 			enc.renderer = ENC_RENDER_AAEXT;
-		}
-		else if( strcmp(argv[i],"-aadl") == 0 ) {
-			if( enc.renderer ) {
-				usage(argv[0]);
-			}
-			enc.renderer = ENC_RENDER_AADL;
-		}
-		else if( strcmp(argv[i],"-aadlext") == 0 ) {
-			if( enc.renderer ) {
-				usage(argv[0]);
-			}
-			enc.renderer = ENC_RENDER_AADLEXT;
-		}
-		else if( strcmp(argv[i],"-aadlext") == 0 ) {
-			if( enc.renderer ) {
-				usage(argv[0]);
-			}
-			enc.renderer = ENC_RENDER_AADLEXT;
 		}
 		else if( strcmp(argv[i],"-aafg") == 0 ) {
 			if( enc.renderer ) {

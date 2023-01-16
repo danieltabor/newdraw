@@ -34,20 +34,17 @@
 #define ENC_RENDER_NONE       0
 #define ENC_RENDER_SIXEL      1
 #define ENC_RENDER_SIMPLE     2
-#define ENC_RENDER_DOUBLE     3
 #define ENC_RENDER_HALF       4
 #define ENC_RENDER_QUARTER    5
 #define ENC_RENDER_SEXTANT    6
 #define ENC_RENDER_AA         7
 #define ENC_RENDER_AAEXT      8
-#define ENC_RENDER_AADL       9
-#define ENC_RENDER_AADLEXT   10
-#define ENC_RENDER_AAFG      11
-#define ENC_RENDER_AAFGEXT   12
-#define ENC_RENDER_AABG      13
-#define ENC_RENDER_AABGEXT   14
-#define ENC_RENDER_CACA      15
-#define ENC_RENDER_CACABLK   16
+#define ENC_RENDER_AAFG       9
+#define ENC_RENDER_AAFGEXT   10
+#define ENC_RENDER_AABG      11
+#define ENC_RENDER_AABGEXT   12
+#define ENC_RENDER_CACA      13
+#define ENC_RENDER_CACABLK   14
 
 //////////////////////////////
 // Edge Decection Processing

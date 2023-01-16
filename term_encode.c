@@ -317,58 +317,7 @@ static void ansiEncodeSimple( term_encode_t* enc ) {
 	}
 }
 
-static void ansiEncodeDoubleLine( term_encode_t* enc ) {
-	uint8_t *prgb;
-	uint32_t rgb;
-	uint32_t last_rgb;
-	uint32_t r, g, b;
-	size_t x;
-	size_t hy,y;
-	
-	if( enc->encbinary ) {
-		binWriteHeader(enc,0,enc->height/2);
-	}
-	
-	if( enc->enctext ) {
-		fprintf(enc->textfp,"\x1b[0m");
-	}
-	for( hy=0; hy<enc->height/2; hy++ ) {
-		y = hy*2;
-		last_rgb = -1;
-		for( x=0; x<enc->width; x++ ) {
-			prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
-			r = *(prgb);
-			g = *(++prgb);
-			b = *(++prgb);
-			if( !enc->palsize ) {
-				prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
-				r = ( r + *(prgb))  / 2;
-				g = ( g + *(++prgb))  / 2;
-				b = ( b + *(++prgb))  / 2;
-			}
-			rgb = (r<<16)|(g<<8)|(b);
-			if( enc->enctext ) {
-				if( last_rgb != rgb ) {
-					ansiSetColorRGB(enc,ENC_BGCOLOR,rgb);
-					last_rgb = rgb;
-				}
-				fprintf(enc->textfp," ");
-			}
-			if( enc->encbinary ) {
-				binWriteCellRGB(enc,0x00FFFFFF,rgb,0,0,0,0,' ');
-			}
-		}
-		if( enc->enctext ) {
-			fprintf(enc->textfp,"\x1b[0m\r\n");
-		}
-	}
-	
-	if( enc->encbinary ) {
-		binClose(enc);
-	}
-}
-
-static void ansiEncodeHalfHeight( term_encode_t* enc) {
+static void ansiEncodeHalfHeight( term_encode_t* enc ) {
 	uint8_t *prgb;
 	uint32_t rgb;
 	uint32_t last_top_rgb;
@@ -459,6 +408,7 @@ static void ansiEncodeQuarter( term_encode_t* enc, uint8_t bw ) {
 	if( enc->enctext ) {
 		fprintf(enc->textfp,"\x1b[0m");
 	}
+	
 	for( hy=0; hy<enc->height/2; hy++ ) {
 		y = hy*2;
 		last_fg_rgb = -1;
@@ -497,7 +447,8 @@ static void ansiEncodeQuarter( term_encode_t* enc, uint8_t bw ) {
 				//Quatize this block down to 2 colors
 				pal2size = 2;
 				quant_quantize(pal2,&pal2size,
-							   pal4pixels, rgb4pixels, 4, 0);
+						pal4pixels, rgb4pixels, 4, 0);
+				
 				idx = (pal4pixels[0]<<3) | (pal4pixels[1]<<2) | (pal4pixels[2]<<1) | pal4pixels[3];
 				binchar = quarter_chars[idx];
 				prgb = pal2;
@@ -505,10 +456,14 @@ static void ansiEncodeQuarter( term_encode_t* enc, uint8_t bw ) {
 				g = *(++prgb);
 				b = *(++prgb);
 				bg_rgb = (r<<16)|(g<<8)|(b);
-				r = *(++prgb);
-				g = *(++prgb);
-				b = *(++prgb);
-				fg_rgb = (r<<16)|(g<<8)|(b);
+				if( pal2size > 1 ) {
+					r = *(++prgb);
+					g = *(++prgb);
+					b = *(++prgb);
+					fg_rgb = (r<<16)|(g<<8)|(b);
+				} else {
+					fg_rgb = last_fg_rgb;
+				}
 			}
 
 			if( enc->enctext ) {
@@ -632,10 +587,14 @@ static void ansiEncodeSextant( term_encode_t* enc, uint8_t bw ) {
 				g = *(++prgb);
 				b = *(++prgb);
 				bg_rgb = (r<<16)|(g<<8)|(b);
-				r = *(++prgb);
-				g = *(++prgb);
-				b = *(++prgb);
-				fg_rgb = (r<<16)|(g<<8)|(b);
+				if( pal2size > 1 ) {
+					r = *(++prgb);
+					g = *(++prgb);
+					b = *(++prgb);
+					fg_rgb = (r<<16)|(g<<8)|(b);
+				} else {
+					fg_rgb = last_fg_rgb;
+				}
 			}
 
 			if( enc->enctext ) {
@@ -1100,8 +1059,9 @@ static int sixelEncode( term_encode_t* enc ) {
 }
 #endif
 
-static int prepImage( term_encode_t* enc, size_t width, uint8_t maintain_ratio ) {
-	float ratio;
+//pixels_per_col = number of pixels per character column in the renderer
+//pixel_ratio    = renderer pixel ratio (width/height);
+static int prepImage( term_encode_t* enc, float pixels_per_col, float pixel_ratio ) {
 	uint8_t *dstrgb;
 	uint8_t *srcrgb;
 	size_t i, x, y;
@@ -1110,6 +1070,7 @@ static int prepImage( term_encode_t* enc, size_t width, uint8_t maintain_ratio )
 	uint8_t *alloctmp;
 	size_t imgwidth;
 	size_t imgheight;
+	float imgratio;
 
 	//Crop Image
 	if( enc->crop.w && enc->crop.h ) {
@@ -1153,33 +1114,24 @@ static int prepImage( term_encode_t* enc, size_t width, uint8_t maintain_ratio )
 	//    through their selection of characters.
 	imgwidth = enc->imgwidth;
 	imgheight = enc->imgheight;
+	//Set the terminal width (characters) for the encoder
 	if( enc->win_width == 0 ) {
 		enc->win_width = imgwidth;
 	}
-	if( width == 0 ) {
-		enc->width = enc->win_width;
-	} else {
-		enc->width = width;
-	}
-	if( imgwidth == enc->width ) {
-		enc->height = imgheight;
-		imgpixels = enc->imgpixels;
-		imgwidth = enc->imgwidth;
-		imgheight = enc->imgheight;
-	} else {
-		ratio = (float)imgheight / (float)imgwidth;
-		if( maintain_ratio ) {
-			enc->height = enc->width * ratio;
-		} else {
-			enc->height = enc->win_width * ratio;
-		}
+	//Set the render width and height (pixels) for the encoder 
+	imgratio = (float)imgheight / (float)imgwidth;
+	enc->width = enc->win_width*pixels_per_col;
+	enc->height = enc->width*imgratio*pixel_ratio;
+	
+	//Resize input image
+	if( imgwidth != enc->width || imgheight != enc->height ) {
 		imgpixels = (uint8_t*)malloc(sizeof(uint8_t)*3*enc->width*enc->height);
 		if( imgpixels == 0 ) {
-			fprintf(stderr,"Failed to allocate RGB pixels for resize: %f %ld %ld %ld\n",ratio,enc->win_width,enc->width,enc->height);
+			fprintf(stderr,"Failed to allocate RGB pixels for resize: %f %ld %ld %ld\n",imgratio,enc->win_width,enc->width,enc->height);
 			return 1;
 		}
 		if( ! stbir_resize_uint8(enc->imgpixels,enc->imgwidth,enc->imgheight,0,imgpixels,enc->width,enc->height,0,3) ) {
-			fprintf(stderr,"Failed to resize image with ratio: %f\n",ratio);
+			fprintf(stderr,"Failed to resize image with ratio: %f\n",imgratio);
 			return 1;
 		}
 		imgpixels = imgpixels;
@@ -1266,7 +1218,7 @@ static int prepImage( term_encode_t* enc, size_t width, uint8_t maintain_ratio )
 			genpalsize = enc->palsize;
 			#ifdef USE_QUANTPNM
 			if( enc->dither ) {
-				//This is create the palette, but it must be still be applied
+				//quant_pnm_make_palette creates the palette, but it must be still be applied
 				enc->palette = quant_pnm_make_palette(imgpixels, enc->width*enc->height,
 					enc->palsize,&genpalsize,0,QUANT_LARGE_AUTO,QUANT_REP_AUTO,QUANT_QUALITY_HIGH);
 			} else 
@@ -1353,71 +1305,63 @@ int term_encode(term_encode_t* enc) {
 	}
 	#ifdef USE_LIBSIXEL
 	else if( enc->renderer == ENC_RENDER_SIXEL ) {
-		if( prepImage(enc,0,1) ) { return 1; }
+		if( prepImage(enc,1,1.0) ) { return 1; }
 		sixelEncode(enc);
 	}
 	#endif //USE_LIBSIXEL
 	else if( enc->renderer == ENC_RENDER_SIMPLE ) {
-		if( prepImage(enc,enc->win_width,1) ) { return 1; }
+		//pixel_ratio manually fine tuned based on Dejavu San Monospace
+		if( prepImage(enc,1,0.48) ) { return 1; }
 		ansiEncodeSimple( enc );
 	}
-	else if( enc->renderer == ENC_RENDER_DOUBLE ) {
-		if( prepImage(enc,enc->win_width,1) ) { return 1; }
-		ansiEncodeDoubleLine( enc );
-	}
 	else if( enc->renderer == ENC_RENDER_HALF ) {
-		if( prepImage(enc,enc->win_width,1) ) { return 1; }
+		//pixel_ratio manually fine tuned based on Dejavu San Monospace
+		if( prepImage(enc,1.0,0.97) ) { return 1; }
 		ansiEncodeHalfHeight( enc );
 	}
 	else if( enc->renderer == ENC_RENDER_QUARTER ) {
-		if( prepImage(enc,enc->win_width*2,0) ) { return 1; }
+		//pixel_ratio manually fine tuned based on Dejavu San Monospace
+		if( prepImage(enc,2.0,0.48) ) { return 1; }
 		ansiEncodeQuarter( enc, 0 );
 	}
 	else if( enc->renderer == ENC_RENDER_SEXTANT ) {
-		if( prepImage(enc,enc->win_width*3/2,0) ) { return 1; }
+		//pixel_ratio manually fine tuned based on Dejavu San Monospace
+		if( prepImage(enc,2.0,0.72) ) { return 1; }
 		ansiEncodeSextant( enc, 0 );
 	}
 	#ifdef USE_AALIB
 	else if( enc->renderer == ENC_RENDER_AA ) {
-		if( prepImage(enc,enc->win_width*2,1) ) { return 1; }
+		if( prepImage(enc,2.0,0.5) ) { return 1; }
 		if( asciiEncode(enc,0) ) { return 1; }
 	}
 	else if( enc->renderer == ENC_RENDER_AAEXT ) {
-		if( prepImage(enc,enc->win_width*2,1) ) { return 1; }
-		if( asciiEncode(enc,1) ) { return 1; }
-	}
-	else if( enc->renderer == ENC_RENDER_AADL ) {
-		if( prepImage(enc,enc->win_width*2,0) ) { return 1; }
-		if( asciiEncode(enc,0) ) { return 1; }
-	}
-	else if( enc->renderer == ENC_RENDER_AADLEXT ) {
-		if( prepImage(enc,enc->win_width*2,0) ) { return 1; }
+		if( prepImage(enc,2.0,0.5) ) { return 1; }
 		if( asciiEncode(enc,1) ) { return 1; }
 	}
 	else if( enc->renderer == ENC_RENDER_AAFG ) {
-		if( prepImage(enc,enc->win_width*2,0) ) { return 1; }
+		if( prepImage(enc,2.0,0.5) ) { return 1; }
 		if( asciiColorEncode(enc,ENC_FGCOLOR,0) ) { return 1; }
 	}
 	else if( enc->renderer == ENC_RENDER_AAFGEXT ) {
-		if( prepImage(enc,enc->win_width*2,0) ) { return 1; }
+		if( prepImage(enc,2.0,0.5) ) { return 1; }
 		if( asciiColorEncode(enc,ENC_FGCOLOR,1) ) { return 1; }
 	}
 	else if( enc->renderer == ENC_RENDER_AABG ) {
-		if( prepImage(enc,enc->win_width*2,0) ) { return 1; }
+		if( prepImage(enc,2.0,0.5) ) { return 1; }
 		if( asciiColorEncode(enc,ENC_BGCOLOR,0) ) { return 1; }
 	}
 	else if( enc->renderer == ENC_RENDER_AABGEXT ) {
-		if( prepImage(enc,enc->win_width*2,0) ) { return 1; }
+		if( prepImage(enc,2.0,0.5) ) { return 1; }
 		if( asciiColorEncode(enc,ENC_BGCOLOR,1) ) { return 1; }
 	}
 	#endif //USE_AALIB
 	#ifdef USE_LIBCACA
 	else if( enc->renderer == ENC_RENDER_CACA ) {
-		if( prepImage(enc,enc->win_width,0) ) { return 1; }
+		if( prepImage(enc,1.0,1.0) ) { return 1; }
 		if( cacaEncode(enc,0) ) { return 1; }
 	}
 	else if( enc->renderer == ENC_RENDER_CACABLK ) {
-		if( prepImage(enc,enc->win_width,0) ) { return 1; }
+		if( prepImage(enc,1.0,1.0) ) { return 1; }
 		if( cacaEncode(enc,1) ) { return 1; }
 	}
 	#endif //USE_LIBCACA

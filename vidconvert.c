@@ -436,18 +436,18 @@ static void usage(char* cmd) {
 	fprintf(stderr,"-sixel   : Sixel (not well supported)\n");
 	#endif //USE_LIBSIXEL
 	fprintf(stderr,"-frames #: Dump frames as PPM files\n");
+	fprintf(stderr,"-simple  : ANSI Simple\n");
 	fprintf(stderr,"-half    : ANSI Half-Height\n");
-	fprintf(stderr,"-double  : ANSI Double-Line\n");
 	fprintf(stderr,"-qchar   : ANSI Quarter-Character\n");
 	fprintf(stderr,"-six     : ANSI Sextant-Character\n");
 	#ifdef USE_AALIB
-	fprintf(stderr,"-aadl    : ASCII Art Double-Line\n");
-	fprintf(stderr,"-aadlext : ASCII Art Double-Line with extended characaters\n");
-	fprintf(stderr,"-aafg    : ASCII Art Dobule-Line with Foreground Color\n");
-	fprintf(stderr,"-aafgext : ASCII Art Dobule-Line with Foreground Color and\n");
+	fprintf(stderr,"-aa      : ASCII Art\n");
+	fprintf(stderr,"-aaext   : ASCII Art with extended characters\n");
+	fprintf(stderr,"-aafg    : ASCII Art with Foreground Color\n");
+	fprintf(stderr,"-aafgext : ASCII Art with Foreground Color and\n");
 	fprintf(stderr,"           extended characters\n");
-	fprintf(stderr,"-aabg    : ASCII Art Double-Line with Background Color\n");
-	fprintf(stderr,"-aabgext : ASCII Art Double-Line with Background Color and\n");
+	fprintf(stderr,"-aabg    : ASCII Art with Background Color\n");
+	fprintf(stderr,"-aabgext : ASCII Art with Background Color and\n");
 	fprintf(stderr,"           extended characters\n");
 	#endif //USE_AALIB
 	#ifdef USE_LIBCACA
@@ -693,11 +693,11 @@ int main(int argc, char** argv) {
 			enc.renderer = ENC_RENDER_SIXEL;
 		}
 		#endif //SIXEL
-		else if( strcmp(argv[i],"-double") == 0 ) {
+		else if( strcmp(argv[i],"-simple") == 0 ) {
 			if( enc.renderer ) {
 				usage(argv[0]);
 			}
-			enc.renderer = ENC_RENDER_DOUBLE;
+			enc.renderer = ENC_RENDER_SIMPLE;
 		}
 		else if( strcmp(argv[i],"-half") == 0 ) {
 			if( enc.renderer ) {
@@ -718,23 +718,17 @@ int main(int argc, char** argv) {
 			enc.renderer = ENC_RENDER_SEXTANT;
 		}
 		#ifdef USE_AALIB
-		else if( strcmp(argv[i],"-aadl") == 0 ) {
+		else if( strcmp(argv[i],"-aa") == 0 ) {
 			if( enc.renderer ) {
 				usage(argv[0]);
 			}
-			enc.renderer = ENC_RENDER_AADL;
+			enc.renderer = ENC_RENDER_AA;
 		}
-		else if( strcmp(argv[i],"-aadlext") == 0 ) {
+		else if( strcmp(argv[i],"-aaext") == 0 ) {
 			if( enc.renderer ) {
 				usage(argv[0]);
 			}
-			enc.renderer = ENC_RENDER_AADLEXT;
-		}
-		else if( strcmp(argv[i],"-aadlext") == 0 ) {
-			if( enc.renderer ) {
-				usage(argv[0]);
-			}
-			enc.renderer = ENC_RENDER_AADLEXT;
+			enc.renderer = ENC_RENDER_AAEXT;
 		}
 		else if( strcmp(argv[i],"-aafg") == 0 ) {
 			if( enc.renderer ) {
@@ -940,15 +934,7 @@ int main(int argc, char** argv) {
 			#ifdef DEBUG
 			fprintf(stderr,"Scaled Frame Size: %ld / %ld\n",scale_width,scale_height);
 			#endif
-			//Adjust the scale width based upon the selected renderer
-			//This a bit of a cheat to prevent term_encode from resizing the image later
-			//to accomodate specific renderers.
-			if( enc.renderer == ENC_RENDER_SEXTANT ) {
-				scale_width = scale_width*3/2;
-			}
-			else if( enc.renderer >= ENC_RENDER_QUARTER && enc.renderer <= ENC_RENDER_AABGEXT ) {
-				scale_width = scale_width*2;
-			}
+			
 			#ifdef DEBUG
 			fprintf(stderr,"Prescaled Frame Size for renderer: %ld / %ld\n",scale_width,scale_height);
 			#endif
