@@ -38,17 +38,18 @@
 
 static void usage(char* cmd) {
 	fprintf(stderr,"Usage:\n");
-	fprintf(stderr,"%s [-h] [-sp 16|256|24 | -p #] [-w #] [-c] [-b binfile]\n",cmd);
+	fprintf(stderr,"%s [-h] [-sp 16|256|24 | -p # | -bw] [-w #] [-c] [-b binfile]\n",cmd);
 	fprintf(stderr,"     ");
 	#ifdef USE_QUANTPNM
 	fprintf(stderr,"[-dither] ");
 	#endif //USE_QUANTPNM
-	fprintf(stderr,"[-crop x y w h]  [-edge | -line | -glow | -hi 0xFFGGBB]\n");
+	fprintf(stderr,"[-crop x y w h]  [-edge | -line | -glow | -hi 0xRRGGBB]\n");
 	fprintf(stderr,"     renderer imgfile\n");
 	fprintf(stderr,"\n");
 	fprintf(stderr,"-h     : Print usage message\n");
 	fprintf(stderr,"-sp    : Use standard 16 or 256 color palette (or 24 shade grey scale)\n");
 	fprintf(stderr,"-p     : Use a true color palette of # colors (<= 256)\n");
+	fprintf(stderr,"-bw    : Disable colors (as possible)\n");
 	fprintf(stderr,"-w     : Set the character width (terminal width used by default)\n");
 	fprintf(stderr,"-c     : Clear terminal\n");
 	fprintf(stderr,"-b     : Binary file to save (for newdraw)\n");
@@ -138,6 +139,16 @@ int main(int argc, char** argv) {
 			if( enc.reqpalsize <= 0 || enc.reqpalsize > 256 ) {
 				usage(argv[0]);
 			}
+		}
+		else if( strcmp(argv[i],"-bw" ) == 0 ) {
+			if( enc.reqpalsize ) {
+				usage(argv[0]);
+			}
+			else if( enc.stdpal ) {
+				usage(argv[0]);
+			}
+			enc.stdpal = 1;
+			enc.reqpalsize = 0;
 		}
 		else if( strcmp(argv[i],"-w") == 0 ) {
 			if( i >= argc-1 ) {

@@ -109,9 +109,11 @@ typedef struct {
 	//0 - Use 24-bit true color
 	//1-256 - Optimal palette size
 	//        Actual calculated size may be less
-	//If stdpal is true, then must be 16 or 256 or 24
-	//    A standard palette of 24 is 24 color gray scale 
-	//    part of the standard 256 color pallette
+	//If stdpal is true, then must be 0, 16, 24, or 256
+	//    A standard palette of 0 disables colors
+	//    A standard palette of 24 uses the standard 256
+	//      color palette, but only the 24 color gray 
+	//      scale colors
 	size_t reqpalsize;
 	
 	//Actual calculated palette

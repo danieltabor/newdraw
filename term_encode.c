@@ -127,7 +127,7 @@ static void ansiSetStdColor( term_encode_t* enc, uint8_t color_type, size_t colo
 		} else { //color_type == ENC_BGCOLOR
 			fprintf(enc->textfp,"\x1b[%dm",bg16codes[color_idx]);
 		}
-	} else { // enc->palsize == 256
+	} else { // enc->palsize == 256 (or 24, which used 256 color encoding)
 		if( color_type == ENC_FGCOLOR ) {
 			fprintf(enc->textfp,"\x1b[38;5;%ldm",color_idx);
 		} else { //color_type == ENC_BGCOLOR
@@ -194,6 +194,9 @@ static void binWriteHeader( term_encode_t *enc, size_t width, size_t height ) {
 		else if( enc->palsize == 256 ) {
 			color_mode = 1;
 		}
+		else if( enc->palsize == 0 ) {
+			color_mode = 3;
+		}
 	}
 	else {
 		color_mode = 2;
@@ -234,9 +237,14 @@ static void binWriteCellRGB(term_encode_t *enc,
 	size_t fg_idx, bg_idx;
 	
 	if( enc->stdpal ) {
-		//ENC_FGCOLOR
-		fg_idx = findStdColorRGB(enc->palsize,fg_rgb);
-		bg_idx = findStdColorRGB(enc->palsize,bg_rgb);
+		if( enc->palsize ) {
+			fg_idx = findStdColorRGB(enc->palsize,fg_rgb);
+			bg_idx = findStdColorRGB(enc->palsize,bg_rgb);
+		}
+		else {
+			fg_idx = 15;
+			bg_idx = 0;
+		}
 		binWriteCellIndex(enc, fg_idx, bg_idx,
 			reverse,blink,bold,underline, character);
 	} else {
@@ -273,13 +281,19 @@ static void binClose(term_encode_t* enc) {
 	enc->binaryfp = 0;
 }
 
+uint16_t simple_chars[16] = { 
+	0x0020, 0x2588
+};
 static void ansiEncodeSimple( term_encode_t* enc ) {
 	uint8_t *prgb;
-	uint32_t rgb;
-	uint32_t last_rgb;
+	int last_bg_rgb;
+	int bg_rgb;
 	uint8_t r, g, b;
 	size_t x;
 	size_t y;
+	uint32_t binchar;
+	
+	uint8_t bw = (enc->stdpal) && (enc->palsize == 0);
 	
 	if( enc->encbinary ) {
 		binWriteHeader(enc,0,0);
@@ -289,22 +303,31 @@ static void ansiEncodeSimple( term_encode_t* enc ) {
 		fprintf(enc->textfp,"\x1b[0m");
 	}
 	for( y=0; y<enc->height; y++ ) {
-		last_rgb = -1;
+		last_bg_rgb = -1;
 		for( x=0; x<enc->width; x++ ) {
-			prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
-			r = *(prgb);
-			g = *(++prgb);
-			b = *(++prgb);
-			rgb = (r<<16)|(g<<8)|(b);
+			if( bw ) {
+				binchar = simple_chars[enc->rgbpixels[3*(y*enc->width+x)]&1];
+			}
+			else {
+				prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
+				r = *(prgb);
+				g = *(++prgb);
+				b = *(++prgb);
+				bg_rgb = (r<<16)|(g<<8)|(b);
+				binchar = simple_chars[0];
+			}
+			
 			if( enc->enctext ) {
-				if( last_rgb != rgb ) {
-					ansiSetColorRGB(enc,ENC_BGCOLOR,rgb);
-					last_rgb = rgb;
+				if( !bw ) {
+					if( last_bg_rgb != bg_rgb ) {
+						ansiSetColorRGB(enc,ENC_BGCOLOR,bg_rgb);
+						last_bg_rgb = bg_rgb;
+					}
 				}
-				fprintf(enc->textfp," ");
+				fprintf(enc->textfp,"%s",utf8_encode(0,binchar));
 			}
 			if( enc->encbinary ) {
-				binWriteCellRGB(enc,0x00FFFFFF,rgb,0,0,0,0,' ');
+				binWriteCellRGB(enc,0x00FFFFFF,bg_rgb,0,0,0,0,binchar);
 			}
 		}
 		if( enc->enctext ) {
@@ -317,54 +340,76 @@ static void ansiEncodeSimple( term_encode_t* enc ) {
 	}
 }
 
+uint16_t halfheight_chars[16] = { 
+	0x0020, 0x2584, 0x2580, 0x2588
+};
 static void ansiEncodeHalfHeight( term_encode_t* enc ) {
 	uint8_t *prgb;
-	uint32_t rgb;
-	uint32_t last_top_rgb;
-	uint32_t top_rgb;
-	uint8_t top_r, top_g, top_b;
-	uint32_t last_bottom_rgb;
-	uint32_t bottom_rgb;
-	uint8_t bottom_r, bottom_g, bottom_b;
+	int last_fg_rgb;
+	int last_bg_rgb;
+	int fg_rgb;
+	int bg_rgb;
 	
+	int r, g, b;
 	size_t x;
 	size_t hy,y;
+	uint32_t binchar;
+	
+	uint8_t last_idx;
+	uint8_t idx = 1;
+	
+	uint8_t bw = (enc->stdpal) && (enc->palsize == 0);
 	
 	if( enc->encbinary ) {
-		binWriteHeader(enc,0,enc->height/2);
+		binWriteHeader(enc,enc->width,enc->height/2);
 	}
 	
 	if( enc->enctext ) {
 		fprintf(enc->textfp,"\x1b[0m");
 	}
+	
 	for( hy=0; hy<enc->height/2; hy++ ) {
 		y = hy*2;
-		last_top_rgb    = -1;
-		last_bottom_rgb = -1;
+		last_fg_rgb = -1;
+		last_bg_rgb = -1;
 		for( x=0; x<enc->width; x++ ) {
-			prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
-			top_r = *(prgb);
-			top_g = *(++prgb);
-			top_b = *(++prgb);
-			top_rgb = (top_r<<16)|(top_g<<8)|(top_b);
-			prgb = &(enc->rgbpixels[3*((y+1)*enc->width+x)]);
-			bottom_r = *(prgb);
-			bottom_g = *(++prgb);
-			bottom_b = *(++prgb);
-			bottom_rgb = (bottom_r<<16)|(bottom_g<<8)|(bottom_b);
+			if( bw ) {
+				idx = (enc->rgbpixels[3*(y*enc->width+x)]&1);
+				idx = (idx<<1) | (enc->rgbpixels[3*((y+1)*enc->width+x)]&1);
+				binchar = halfheight_chars[idx];
+				fg_rgb = 0xFFFFFF;
+				bg_rgb = 0x000000;
+			}
+			else {
+				prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
+				r = *(prgb);
+				g = *(++prgb);
+				b = *(++prgb);
+				bg_rgb = (r<<16)|(g<<8)|(b);
+				prgb = &(enc->rgbpixels[3*((y+1)*enc->width+x)]);
+				r = *(prgb);
+				g = *(++prgb);
+				b = *(++prgb);
+				fg_rgb = (r<<16)|(g<<8)|(b);
+				idx = 1;
+				binchar = halfheight_chars[idx];
+			}
+
 			if( enc->enctext ) {
-				if( last_top_rgb != top_rgb ) {
-					ansiSetColorRGB(enc,ENC_FGCOLOR,top_rgb);
-					last_top_rgb = top_rgb;
+				if( !bw ) {
+					if( last_fg_rgb != fg_rgb ) {
+						ansiSetColorRGB(enc,ENC_FGCOLOR,fg_rgb);
+						last_fg_rgb = fg_rgb;
+					}
+					if( last_bg_rgb != bg_rgb ) {
+						ansiSetColorRGB(enc,ENC_BGCOLOR,bg_rgb);
+						last_bg_rgb = bg_rgb;
+					}
 				}
-				if( last_bottom_rgb != bottom_rgb ) {
-					ansiSetColorRGB(enc,ENC_BGCOLOR,bottom_rgb);
-					last_bottom_rgb = bottom_rgb;
-				}
-				fprintf(enc->textfp,"\xe2\x96\x80");
+				fprintf(enc->textfp,"%s",utf8_encode(0,binchar));
 			}
 			if( enc->encbinary ) {
-				binWriteCellRGB(enc,top_rgb,bottom_rgb,0,0,0,0,0x2580);
+				binWriteCellRGB(enc,fg_rgb,bg_rgb,0,0,0,0,binchar);
 			}
 		}
 		if( enc->enctext ) {
@@ -381,7 +426,7 @@ uint16_t quarter_chars[16] = {
 	0x0020, 0x2597, 0x2596, 0x2584, 0x259D, 0x2590, 0x259E, 0x259F, 
 	0x2598, 0x259A, 0x258C, 0x2599, 0x2580, 0x259C, 0x259B, 0x2588 
 };
-static void ansiEncodeQuarter( term_encode_t* enc, uint8_t bw ) {
+static void ansiEncodeQuarter( term_encode_t* enc ) {
 	uint8_t *prgb;
 	int last_fg_rgb;
 	int last_bg_rgb;
@@ -400,6 +445,8 @@ static void ansiEncodeQuarter( term_encode_t* enc, uint8_t bw ) {
 	uint8_t *prgb4;
 	
 	uint8_t idx;
+	
+	uint8_t bw = (enc->stdpal) && (enc->palsize == 0);
 	
 	if( enc->encbinary ) {
 		binWriteHeader(enc,enc->width/2,enc->height/2);
@@ -422,6 +469,8 @@ static void ansiEncodeQuarter( term_encode_t* enc, uint8_t bw ) {
 				idx = (idx<<1) | (enc->rgbpixels[3*((y+1)*enc->width+x)]&1);
 				idx = (idx<<1) | (enc->rgbpixels[3*((y+1)*enc->width+(x+1))]&1);
 				binchar = quarter_chars[idx];
+				fg_rgb = 0xFFFFFF;
+				bg_rgb = 0x000000;
 			}
 			else {
 				//rgb x=0 y=0
@@ -467,7 +516,7 @@ static void ansiEncodeQuarter( term_encode_t* enc, uint8_t bw ) {
 			}
 
 			if( enc->enctext ) {
-				if( ! bw ) {
+				if( !bw ) {
 					if( last_fg_rgb != fg_rgb ) {
 						ansiSetColorRGB(enc,ENC_FGCOLOR,fg_rgb);
 						last_fg_rgb = fg_rgb;
@@ -503,7 +552,7 @@ uint32_t sextant_chars[64] = {
 	0x1FB02,0x1FB21,0x1FB12,0x1FB30,0x1FB0A,0x1FB28,0x1FB19,0x1FB38,
 	0x1FB06,0x1FB25,0x1FB15,0x1FB34,0x1FB0E,0x1FB2C,0x1FB1D,0x02588
 };
-static void ansiEncodeSextant( term_encode_t* enc, uint8_t bw ) {
+static void ansiEncodeSextant( term_encode_t* enc ) {
 	uint8_t *prgb;
 	int last_fg_rgb;
 	int last_bg_rgb;
@@ -523,8 +572,10 @@ static void ansiEncodeSextant( term_encode_t* enc, uint8_t bw ) {
 	
 	uint8_t idx;
 	
+	uint8_t bw = (enc->stdpal) && (enc->palsize == 0);
+	
 	if( enc->encbinary ) {
-		binWriteHeader(enc,enc->width/2,enc->height/2);
+		binWriteHeader(enc,enc->width/2,enc->height/3);
 	}
 	
 	if( enc->enctext ) {
@@ -545,6 +596,8 @@ static void ansiEncodeSextant( term_encode_t* enc, uint8_t bw ) {
 				idx = (idx<<1) | (enc->rgbpixels[3*((y+2)*enc->width+x)]&1);
 				idx = (idx<<1) | (enc->rgbpixels[3*((y+2)*enc->width+(x+1))]&1);
 				binchar = sextant_chars[idx];
+				fg_rgb = 0xFFFFFF;
+				bg_rgb = 0x000000;
 			}
 			else {
 				//rgb x=0 y=0
@@ -598,7 +651,7 @@ static void ansiEncodeSextant( term_encode_t* enc, uint8_t bw ) {
 			}
 
 			if( enc->enctext ) {
-				if( ! bw ) {
+				if( !bw ) {
 					if( last_fg_rgb != fg_rgb ) {
 						ansiSetColorRGB(enc,ENC_FGCOLOR,fg_rgb);
 						last_fg_rgb = fg_rgb;
@@ -709,7 +762,7 @@ static int asciiEncode( term_encode_t* enc, int extended) {
 	
 	if( enc->encbinary ) {
 		enc->stdpal = 1;
-		enc->palsize = 16;
+		enc->palsize = 0;
 		binWriteHeader(enc,char_width,char_height);
 	}
 	
@@ -764,6 +817,9 @@ static int asciiColorEncode( term_encode_t* enc, uint8_t color_type, int extende
 	uint16_t c;
 	char *utf8c;
 	size_t char_width;
+	
+	uint8_t bw = (enc->stdpal) && (enc->palsize == 0);
+	
 	aa_context *aa;
 	int supported = AA_NORMAL_MASK;
 	
@@ -786,46 +842,50 @@ static int asciiColorEncode( term_encode_t* enc, uint8_t color_type, int extende
 		last_rgb = -1;
 		for( hx=0; hx<enc->width/2; hx++ ) {
 			x = hx*2;
-			prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
-			r = *(prgb);
-			g = *(++prgb);
-			b = *(++prgb);
-			if( !enc->palsize ) {
-				r = ( r + *(++prgb));
-				g = ( g + *(++prgb));
-				b = ( b + *(++prgb));
-				prgb = &(enc->rgbpixels[3*((y+1)*enc->width+x)]);
-				r = ( r + *(++prgb));
-				g = ( g + *(++prgb));
-				b = ( b + *(++prgb));
-				r = ( r + *(++prgb));
-				g = ( g + *(++prgb));
-				b = ( b + *(++prgb));
-				r = r / 4;
-				g = g / 4;
-				b = b / 4;
+			if( !bw ) {
+				prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
+				r = *(prgb);
+				g = *(++prgb);
+				b = *(++prgb);
+				if( !enc->palsize ) {
+					r = ( r + *(++prgb));
+					g = ( g + *(++prgb));
+					b = ( b + *(++prgb));
+					prgb = &(enc->rgbpixels[3*((y+1)*enc->width+x)]);
+					r = ( r + *(prgb));
+					g = ( g + *(++prgb));
+					b = ( b + *(++prgb));
+					r = ( r + *(++prgb));
+					g = ( g + *(++prgb));
+					b = ( b + *(++prgb));
+					r = r / 4;
+					g = g / 4;
+					b = b / 4;
+				}
+				rgb = (r<<16)|(g<<8)|(b);
 			}
-			rgb = (r<<16)|(g<<8)|(b);
 			attr = aa->attrbuffer[hy*char_width+hx];
 			c = cp437[aa->textbuffer[hy*char_width+hx]];
 			utf8c = utf8_encode(0,c);
 			reverse = (attr == AA_REVERSE);
 			bold = (attr == AA_BOLD);
 			if( enc->enctext ) {
-				if( last_rgb != rgb ) {
-					fprintf(enc->textfp,"\x1b[0m");
-					if( color_type == ENC_FGCOLOR ) {
-						ansiSetColor(enc,ENC_BGCOLOR,0,0,0);
-						ansiSetColor(enc,ENC_FGCOLOR,r,g,b);
-					}
-					else if( color_type == ENC_BGCOLOR ) {
-						ansiSetColorRGB(enc,ENC_BGCOLOR,rgb);
-						if( (r*0.299 + g*0.587 + b*0.114) > 150 ) { //Theory Limit 186
-							fg = 0;
-						} else {
-							fg = 0xFF;
+				if( !bw ) {
+					if( last_rgb != rgb ) {
+						fprintf(enc->textfp,"\x1b[0m");
+						if( color_type == ENC_FGCOLOR ) {
+							ansiSetColor(enc,ENC_BGCOLOR,0,0,0);
+							ansiSetColor(enc,ENC_FGCOLOR,r,g,b);
 						}
-						ansiSetColor(enc,ENC_FGCOLOR,fg,fg,fg);
+						else if( color_type == ENC_BGCOLOR ) {
+							ansiSetColorRGB(enc,ENC_BGCOLOR,rgb);
+							if( (r*0.299 + g*0.587 + b*0.114) > 150 ) { //Theory Limit 186
+								fg = 0;
+							} else {
+								fg = 0xFF;
+							}
+							ansiSetColor(enc,ENC_FGCOLOR,fg,fg,fg);
+						}
 					}
 					
 					if( reverse ) {
@@ -1066,7 +1126,7 @@ static int prepImage( term_encode_t* enc, float pixels_per_col, float pixel_rati
 	uint8_t *srcrgb;
 	size_t i, x, y;
 	size_t orgcolors,genpalsize;
-	uint8_t *imgpixels= 0;
+	uint8_t *imgpixels= enc->imgpixels;
 	uint8_t *alloctmp;
 	size_t imgwidth;
 	size_t imgheight;
@@ -1111,7 +1171,9 @@ static int prepImage( term_encode_t* enc, float pixels_per_col, float pixel_rati
 	// 1) Pixels are square
 	// 2) Terminal characters are rectangles (twice as height as they are wide)
 	// 3) Renderers are responsible for "squaring" the resulting image (or not)
-	//    through their selection of characters.
+	//    through their selection of characters.  The pixel_ratio argument should
+	//    specify how well the renderer will do this.
+	imgpixels = enc->imgpixels;
 	imgwidth = enc->imgwidth;
 	imgheight = enc->imgheight;
 	//Set the terminal width (characters) for the encoder
@@ -1134,7 +1196,6 @@ static int prepImage( term_encode_t* enc, float pixels_per_col, float pixel_rati
 			fprintf(stderr,"Failed to resize image with ratio: %f\n",imgratio);
 			return 1;
 		}
-		imgpixels = imgpixels;
 		imgwidth = enc->width;
 		imgheight = enc->height;
 		#ifdef DEBUG
@@ -1158,8 +1219,19 @@ static int prepImage( term_encode_t* enc, float pixels_per_col, float pixel_rati
 		}
 	}
 	
+	//Black and White
+	if( enc->stdpal && !enc->palsize ) {
+		//allocate bwpixels
+		alloctmp = (uint8_t*)malloc(sizeof(uint8_t)*enc->width*enc->height);
+		if( alloctmp == 0 ) {
+			fprintf(enc->textfp,"Failed allocate space for black and white pixels\n");
+			return 1;
+		}
+		quant_bw(alloctmp,imgpixels,enc->width*enc->height,1);
+		free(alloctmp);
+	}
 	//Paletteize
-	if( enc->palsize ) {
+	else if( enc->palsize ) {
 		//allocate palette
 		alloctmp  = (uint8_t*)realloc(enc->palette,sizeof(uint8_t)*3*enc->palsize);
 		if( alloctmp == 0 ) {
@@ -1249,6 +1321,8 @@ static int prepImage( term_encode_t* enc, float pixels_per_col, float pixel_rati
 		}
 		#endif //USE_QUANTPNM
 	}
+	//else True Color
+	
 	enc->rgbpixels = imgpixels;
 	return 0;
 }
@@ -1285,10 +1359,10 @@ int term_encode_detect_win_width(term_encode_t* enc) {
 }
 
 int term_encode(term_encode_t* enc) {
-	if( (enc->stdpal && enc->reqpalsize != 16 && enc->reqpalsize != 256 && enc->reqpalsize != 24) ||
+	if( (enc->stdpal && enc->reqpalsize != 0 && enc->reqpalsize != 16 && enc->reqpalsize != 256 && enc->reqpalsize != 24) ||
 			enc->reqpalsize > 256 ) {
 		enc->palsize = 0;
-		fprintf(stderr,"Inavlid standard palette size\n");
+		fprintf(stderr,"Invalid palette size\n");
 		return 1;
 	}
 	enc->palsize = enc->reqpalsize;
@@ -1322,12 +1396,12 @@ int term_encode(term_encode_t* enc) {
 	else if( enc->renderer == ENC_RENDER_QUARTER ) {
 		//pixel_ratio manually fine tuned based on Dejavu San Monospace
 		if( prepImage(enc,2.0,0.48) ) { return 1; }
-		ansiEncodeQuarter( enc, 0 );
+		ansiEncodeQuarter( enc );
 	}
 	else if( enc->renderer == ENC_RENDER_SEXTANT ) {
 		//pixel_ratio manually fine tuned based on Dejavu San Monospace
 		if( prepImage(enc,2.0,0.72) ) { return 1; }
-		ansiEncodeSextant( enc, 0 );
+		ansiEncodeSextant( enc );
 	}
 	#ifdef USE_AALIB
 	else if( enc->renderer == ENC_RENDER_AA ) {

@@ -45,6 +45,11 @@ void quant_apply_palette(
 	size_t pixelslen,
 	uint8_t syncrgb );
 
+void quant_bw(
+	uint8_t *bwpixels,
+	uint8_t *rgbpixels,
+	size_t pixelslen,
+	uint8_t syncrgb );
 
 //
 //
@@ -193,6 +198,37 @@ void quant_apply_palette(
 		palpixels[i] = min_color;
 		if( syncrgb ) {
 			rgbassign(rgbpixels,i,palette,min_color);
+		}
+	}
+}
+
+void quant_bw(
+	uint8_t *bwpixels,
+	uint8_t *rgbpixels,
+	size_t pixelslen,
+	uint8_t syncrgb ) {
+	
+	size_t i;
+	uint8_t intensity;
+	float average = 0;
+	for( i=0; i<pixelslen; i++ ) {
+		intensity =  DY(rgbpixels,i);
+		average = average + ((float)intensity / (float)pixelslen);
+		bwpixels[i] = intensity;
+	}
+	
+	for( i=0; i<pixelslen; i++ ) {
+		if( bwpixels[i] >= average ) {
+			intensity = 0xFF;
+		}
+		else {
+			intensity = 0x00;
+		}
+		bwpixels[i] = intensity;
+		if( syncrgb ) {
+			rgbpixels[3*i+0] = intensity;
+			rgbpixels[3*i+1] = intensity;
+			rgbpixels[3*i+2] = intensity;
 		}
 	}
 }

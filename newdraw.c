@@ -48,6 +48,7 @@
 #define CM_16   0
 #define CM_256  1
 #define CM_TRUE 2
+#define CM_BW   3
 
 #ifdef DEBUG
 uint8_t lastinput[8];
@@ -382,7 +383,7 @@ void init_canvas() {
 	if( color_mode == CM_TRUE ) {
 		fgcolor = 0x00FFFFFF;
 		bgcolor = 0x00000000;
-	} else {
+	} else { //if( color_mode == CM_16 || color_mode == CM_256 || color_mode == CM_BW ) {
 		fgcolor = 15;
 		bgcolor = 0;
 	}
@@ -755,7 +756,7 @@ void export() {
 					} else if( color_mode == CM_TRUE ) {
 						fprintf(fp,"\x1b[38;2;%d;%d;%dm",(scr_fgcolor>>16)&0xFF,(scr_fgcolor>>8)&0xFF,scr_fgcolor&0xFF);
 						fprintf(fp,"\x1b[48;2;%d;%d;%dm",(scr_bgcolor>>16)&0xFF,(scr_bgcolor>>8)&0xFF,scr_bgcolor&0xFF);
-					}
+					} //else if( color_mode == CM_BW ) { }
 					scr_reverse = cell->reverse;
 					if( scr_reverse ) { fprintf(fp,"\x1b[7m"); }
 					scr_blink = cell->blink;
@@ -842,7 +843,7 @@ void render() {
 					} else if( color_mode == CM_TRUE ) {
 						printf("\x1b[38;2;%d;%d;%dm",(scr_fgcolor>>16)&0xFF,(scr_fgcolor>>8)&0xFF,scr_fgcolor&0xFF);
 						printf("\x1b[48;2;%d;%d;%dm",(scr_bgcolor>>16)&0xFF,(scr_bgcolor>>8)&0xFF,scr_bgcolor&0xFF);
-					}
+					} //else if( color_mode == CM_BW ) { }
 					scr_reverse = cell->reverse;
 					if( scr_reverse ) { printf("\x1b[7m"); }
 					scr_blink = cell->blink;
@@ -977,7 +978,7 @@ void render() {
 		} else if( color_mode == CM_TRUE ) {
 			printf("\x1b[0m\x1b[38;2;%d;%d;%dm\x1b[48;2;%d;%d;%dm\x1b[4mF\x1b[24mG/\x1b[4mB\x1b[24mG\x1b[0m ",
 						 (fgcolor>>16)&0xFF,(fgcolor>>8)&0xFF,fgcolor&0xFF,(bgcolor>>16)&0xFF,(bgcolor>>8)&0xFF,bgcolor&0xFF);
-		}
+		} //else if( color_mode == CM_BW ) { }
 		//Apply
 		printf("\x1b[4mA\x1b[0mpply ");
 		//Grab
@@ -1086,7 +1087,7 @@ void termSetupReset() {
 
 void usage(char* cmd) {
 	printf("Usage:\n");
-	printf("%s [-h] [-s width height] [-m 16|256|true] [-c codepage(hex)]\n",cmd);
+	printf("%s [-h] [-s width height] [-m 16|256|true|bw] [-c codepage(hex)]\n",cmd);
 	printf("      [-dos | -pet | -trs] [-es] [-nec] binpath\n");
 	printf("\n");
 	printf("  -h  : Print usage message\n");
@@ -1154,6 +1155,9 @@ int main(int argc, char** argv) {
 			}
 			else if( strcasecmp("true",argv[i]) == 0 ) {
 				color_mode = CM_TRUE;
+			}
+			else if( strcasecmp("bw",argv[i]) == 0 ) {
+				color_mode = CM_BW;
 			}
 			else {
 				usage(argv[0]);
@@ -1394,21 +1398,25 @@ int main(int argc, char** argv) {
 						if( color_mode == CM_16 ) { fgcolor = (fgcolor+1)%16; }
 						else if( color_mode == CM_256 ) { fgcolor = (fgcolor+1)%256; }
 						else if( color_mode == CM_TRUE ) { fgcolor_input = 1; }
+						//else if( color_mode == CM_BW ) { }
 					}
 					else if( input[0] == 'F' ) { //Foreground color down
 						if( color_mode == CM_16 ) { fgcolor = (fgcolor+15)%16; }
 						else if( color_mode == CM_256 ) { fgcolor = (fgcolor+255)%256; }
 						else if( color_mode == CM_TRUE ) { fgcolor_input = 1; }
+						//else if( color_mode == CM_BW ) { }
 					}
 					else if( input[0] == 'b' ) { //Background color up
 						if( color_mode == CM_16 ) { bgcolor = (bgcolor+1)%16; }
 						else if( color_mode == CM_256 ) { bgcolor = (bgcolor+1)%256; }
 						else if( color_mode == CM_TRUE ) { bgcolor_input = 1; }
+						//else if( color_mode == CM_BW ) { }
 					}
 					else if( input[0] == 'B' ) { //Background color down
 						if( color_mode == CM_16 ) { bgcolor = (bgcolor+15)%16; }
 						else if( color_mode == CM_256 ) { bgcolor = (bgcolor+255)%256; }
 						else if( color_mode == CM_TRUE ) { bgcolor_input = 1; }
+						//else if( color_mode == CM_BW ) { }
 					}
 					else if( input[0] == 's' || input[0] == 'S' ) {
 						save_input = 1;

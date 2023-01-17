@@ -404,12 +404,12 @@ static void usage(char* cmd) {
 	fprintf(stderr,"[-m] ");
 	#endif
 	fprintf(stderr,"[-srt subfile] [-seek 0:00:00.000]\n");
-	fprintf(stderr,"  [-sp 16|256|24 | -p #] [-w #]");
+	fprintf(stderr,"  [-sp 16|256|24 | -p # | -bw] [-w #]");
 	#ifdef USE_QUANTPNM
 	fprintf(stderr," [-dither]");
 	#endif //USE_QUANTPNM
 	fprintf(stderr,"\n");
-	fprintf(stderr,"  [-crop x y w h] [-edge | -line | -glow | -hi 0xFFGGBB]\n");
+	fprintf(stderr,"  [-crop x y w h] [-edge | -line | -glow | -hi 0xRRGGBB]\n");
 	fprintf(stderr,"  renderer vidfile\n");
 	fprintf(stderr,"\n");
 	fprintf(stderr,"-h     : Print usage message\n");
@@ -421,6 +421,7 @@ static void usage(char* cmd) {
 	fprintf(stderr,"-seek  : Seek to specifed time code\n");
 	fprintf(stderr,"-sp    : Use standard 16 or 256 color palette (or 24 shade grey scale)\n");
 	fprintf(stderr,"-p     : Use a true color palette of # colors (<= 256)\n");
+	fprintf(stderr,"-bw    : Disable colors (as possible)\n");
 	fprintf(stderr,"-w     : Set the character width (terminal width used by default)\n");
 	#ifdef USE_QUANTPNM
 	fprintf(stderr,"-dither: Use palette quantizer with dither\n");
@@ -587,6 +588,16 @@ int main(int argc, char** argv) {
 			if( enc.reqpalsize <= 0 || enc.reqpalsize > 256 ) {
 				usage(argv[0]);
 			}
+		}
+		else if( strcmp(argv[i],"-bw" ) == 0 ) {
+			if( enc.reqpalsize ) {
+				usage(argv[0]);
+			}
+			else if( enc.stdpal ) {
+				usage(argv[0]);
+			}
+			enc.stdpal = 1;
+			enc.reqpalsize = 0;
 		}
 		else if( strcmp(argv[i],"-w") == 0 ) {
 			if( i >= argc-1 ) {
