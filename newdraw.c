@@ -1098,7 +1098,7 @@ void usage(char* cmd) {
 	printf("  -dos: Use DOS character set (codepage 437)\n");
 	printf("  -pet: Use PETSCI character set\n");
 	printf("  -trs: Use TRS-80 character set\n");
-	printf("        Experts are still in UTF-8\n");
+	printf("        Exports are still in UTF-8\n");
 	printf("  -c  : Starting special character code page\n");
 	printf("  -es : DISABLE export of blank characters as spaces\n");
 	printf("  -ec : DISABLE export start with terminal clear\n");
