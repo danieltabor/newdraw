@@ -281,7 +281,7 @@ static void binClose(term_encode_t* enc) {
 	enc->binaryfp = 0;
 }
 
-uint16_t simple_chars[16] = { 
+static uint16_t simple_chars[16] = { 
 	0x0020, 0x2588
 };
 static void ansiEncodeSimple( term_encode_t* enc ) {
@@ -340,7 +340,7 @@ static void ansiEncodeSimple( term_encode_t* enc ) {
 	}
 }
 
-uint16_t halfheight_chars[16] = { 
+static uint16_t halfheight_chars[16] = { 
 	0x0020, 0x2584, 0x2580, 0x2588
 };
 static void ansiEncodeHalfHeight( term_encode_t* enc ) {
@@ -422,7 +422,7 @@ static void ansiEncodeHalfHeight( term_encode_t* enc ) {
 	}
 }
 
-uint16_t quarter_chars[16] = { 
+static uint16_t quarter_chars[16] = { 
 	0x0020, 0x2597, 0x2596, 0x2584, 0x259D, 0x2590, 0x259E, 0x259F, 
 	0x2598, 0x259A, 0x258C, 0x2599, 0x2580, 0x259C, 0x259B, 0x2588 
 };
@@ -542,7 +542,7 @@ static void ansiEncodeQuarter( term_encode_t* enc ) {
 	}
 }
 
-uint32_t sextant_chars[64] = {
+static uint32_t sextant_chars[64] = {
 	0x00020,0x1FB1E,0x1FB0F,0x1FB2D,0x1FB07,0x1FB26,0x1FB16,0x1FB35,
 	0x1FB03,0x1FB22,0x1FB13,0x1FB31,0x1FB0B,0x1FB29,0x1FB1A,0x1FB39,
 	0x1FB01,0x1FB20,0x1FB11,0x1FB2F,0x1FB09,0x02590,0x1FB18,0x1FB37,
@@ -677,6 +677,148 @@ static void ansiEncodeSextant( term_encode_t* enc ) {
 	}
 }
 
+static uint16_t braille_chars[256] = {
+	0x2800, 0x2880, 0x2840, 0x28C0, 0x2820, 0x28A0, 0x2860, 0x28E0,
+	0x2804, 0x2884, 0x2844, 0x28C4, 0x2824, 0x28A4, 0x2864, 0x28E4,	
+	0x2810, 0x2890, 0x2850, 0x28D0, 0x2830, 0x28B0, 0x2870, 0x28F0,
+	0x2814, 0x2894, 0x2854, 0x28D4, 0x2834, 0x28B4, 0x2874, 0x28F4,
+	0x2802, 0x2882, 0x2842, 0x28C2, 0x2822, 0x28A2, 0x2862, 0x28E2,
+	0x2806, 0x2886, 0x2846, 0x28C6, 0x2826, 0x28A6, 0x2866, 0x28E6,
+	0x2812, 0x2892, 0x2852, 0x28D2, 0x2832, 0x28B2, 0x2872, 0x28F2,
+	0x2816, 0x2896, 0x2856, 0x28D6, 0x2836, 0x28B6, 0x2876, 0x28F6,
+	0x2808, 0x2888, 0x2848, 0x28C8, 0x2828, 0x28A8, 0x2868, 0x28E8,
+	0x280C, 0x288C, 0x284C, 0x28CC, 0x282C, 0x28AC, 0x286C, 0x28EC,
+	0x2818, 0x2898, 0x2858, 0x28D8, 0x2838, 0x28B8, 0x2878, 0x28F8,
+	0x281C, 0x289C, 0x285C, 0x28DC, 0x283C, 0x28BC, 0x287C, 0x28FC,
+	0x280A, 0x288A, 0x284A, 0x28CA, 0x282A, 0x28AA, 0x286A, 0x28EA,
+	0x280E, 0x288E, 0x284E, 0x28CE, 0x282E, 0x28AE, 0x286E, 0x28EE,
+	0x281A, 0x289A, 0x285A, 0x28DA, 0x283A, 0x28BA, 0x287A, 0x28FA,
+	0x281E, 0x289E, 0x285E, 0x28DE, 0x283E, 0x28BE, 0x287E, 0x28FE,
+	0x2801, 0x2881, 0x2841, 0x28C1, 0x2821, 0x28A1, 0x2861, 0x28E1,
+	0x2805, 0x2885, 0x2845, 0x28C5, 0x2825, 0x28A5, 0x2865, 0x28E5,
+	0x2811, 0x2891, 0x2851, 0x28D1, 0x2831, 0x28B1, 0x2871, 0x28F1,
+	0x2815, 0x2895, 0x2855, 0x28D5, 0x2835, 0x28B5, 0x2875, 0x28F5,
+	0x2803, 0x2883, 0x2843, 0x28C3, 0x2823, 0x28A3, 0x2863, 0x28E3,
+	0x2807, 0x2887, 0x2847, 0x28C7, 0x2827, 0x28A7, 0x2867, 0x28E7,
+	0x2813, 0x2893, 0x2853, 0x28D3, 0x2833, 0x28B3, 0x2873, 0x28F3,
+	0x2817, 0x2897, 0x2857, 0x28D7, 0x2837, 0x28B7, 0x2877, 0x28F7,
+	0x2809, 0x2889, 0x2849, 0x28C9, 0x2829, 0x28A9, 0x2869, 0x28E9,
+	0x280D, 0x288D, 0x284D, 0x28CD, 0x282D, 0x28AD, 0x286D, 0x28ED,
+	0x2819, 0x2899, 0x2859, 0x28D9, 0x2839, 0x28B9, 0x2879, 0x28F9,
+	0x281D, 0x289D, 0x285D, 0x28DD, 0x283D, 0x28BD, 0x287D, 0x28FD,
+	0x280B, 0x288B, 0x284B, 0x28CB, 0x282B, 0x28AB, 0x286B, 0x28EB,
+	0x280F, 0x288F, 0x284F, 0x28CF, 0x282F, 0x28AF, 0x286F, 0x28EF,
+	0x281B, 0x289B, 0x285B, 0x28DB, 0x283B, 0x28BB, 0x287B, 0x28FB,
+	0x281F, 0x289F, 0x285F, 0x28DF, 0x283F, 0x28BF, 0x287F, 0x28FF,
+};
+static void ansiEncodeBraille( term_encode_t* enc ) {
+	uint8_t *prgb;
+	int last_rgb;
+	int rgb;
+
+	int r, g, b;
+	size_t hx,x;
+	size_t hy,y;
+	uint32_t binchar;
+	
+	uint8_t *bwpixels;
+	uint8_t idx;
+	uint8_t bw = (enc->stdpal) && (enc->palsize == 0);
+	
+	bwpixels = (uint8_t*)malloc(sizeof(uint8_t)*enc->width*enc->height);
+	if( bwpixels == 0 ) {
+		fprintf(enc->textfp,"Failed allocate space for black and white pixels\n");
+	}
+	quant_bw(bwpixels,enc->rgbpixels,enc->width*enc->height,0);
+	
+	if( enc->encbinary ) {
+		binWriteHeader(enc,enc->width/2,enc->height/3);
+	}
+	
+	if( enc->enctext ) {
+		fprintf(enc->textfp,"\x1b[0m");
+		if( ! bw ) {
+			ansiSetColorRGB(enc,ENC_BGCOLOR,0);
+		}
+	}
+	for( hy=0; hy<enc->height/4; hy++ ) {
+		y = hy*4;
+		last_rgb = -1;
+		for( hx=0; hx<enc->width/2; hx++ ) {
+			x = hx*2;
+			
+			idx = (bwpixels[y*enc->width+x]&1);
+			idx = (idx<<1) | (bwpixels[y*enc->width+(x+1)]&1);
+			idx = (idx<<1) | (bwpixels[(y+1)*enc->width+x]&1);
+			idx = (idx<<1) | (bwpixels[(y+1)*enc->width+(x+1)]&1);
+			idx = (idx<<1) | (bwpixels[(y+2)*enc->width+x]&1);
+			idx = (idx<<1) | (bwpixels[(y+2)*enc->width+(x+1)]&1);
+			idx = (idx<<1) | (bwpixels[(y+3)*enc->width+x]&1);
+			idx = (idx<<1) | (bwpixels[(y+3)*enc->width+(x+1)]&1);
+			binchar = braille_chars[idx];
+			
+			if( !bw ) {
+				prgb = &(enc->rgbpixels[3*(y*enc->width+x)]);
+				r = *(prgb);
+				g = *(++prgb);
+				b = *(++prgb);
+				if( !enc->palsize ) {
+					r = ( r + *(++prgb));
+					g = ( g + *(++prgb));
+					b = ( b + *(++prgb));
+					prgb = &(enc->rgbpixels[3*((y+1)*enc->width+x)]);
+					r = ( r + *(prgb));
+					g = ( g + *(++prgb));
+					b = ( b + *(++prgb));
+					r = ( r + *(++prgb));
+					g = ( g + *(++prgb));
+					b = ( b + *(++prgb));
+					prgb = &(enc->rgbpixels[3*((y+2)*enc->width+x)]);
+					r = ( r + *(prgb));
+					g = ( g + *(++prgb));
+					b = ( b + *(++prgb));
+					r = ( r + *(++prgb));
+					g = ( g + *(++prgb));
+					b = ( b + *(++prgb));
+					prgb = &(enc->rgbpixels[3*((y+3)*enc->width+x)]);
+					r = ( r + *(prgb));
+					g = ( g + *(++prgb));
+					b = ( b + *(++prgb));
+					r = ( r + *(++prgb));
+					g = ( g + *(++prgb));
+					b = ( b + *(++prgb));
+					r = r / 8;
+					g = g / 8;
+					b = b / 8;
+				}
+				rgb = (r<<16)|(g<<8)|(b);
+			}
+
+			if( enc->enctext ) {
+				if( !bw ) {
+					if( last_rgb != rgb ) {
+						ansiSetColorRGB(enc,ENC_FGCOLOR,rgb);
+						last_rgb = rgb;
+					}
+				}
+				fprintf(enc->textfp,"%s",utf8_encode(0,binchar));
+			}
+			if( enc->encbinary ) {
+				binWriteCellRGB(enc,rgb,0,0,0,0,0,binchar);
+			}
+		}
+		if( enc->enctext ) {
+			fprintf(enc->textfp,"\x1b[0m\r\n");
+		}
+	}
+	
+	if( enc->encbinary ) {
+		binClose(enc);
+	}
+	
+	free(bwpixels);
+}
+	
 #ifdef USE_AALIB
 static aa_context* aaRender( term_encode_t* enc, size_t* char_width, size_t* char_height, int supported) {
 	aa_context *aa;
@@ -1402,6 +1544,11 @@ int term_encode(term_encode_t* enc) {
 		//pixel_ratio manually fine tuned based on Dejavu San Monospace
 		if( prepImage(enc,2.0,0.72) ) { return 1; }
 		ansiEncodeSextant( enc );
+	}
+	else if( enc->renderer == ENC_RENDER_BRAILLE ) {
+		//pixel_ratio manually fine tuned based on Dejavu San Monospace
+		if( prepImage(enc,2.0,0.95) ) { return 1; }
+		ansiEncodeBraille( enc );
 	}
 	#ifdef USE_AALIB
 	else if( enc->renderer == ENC_RENDER_AA ) {
