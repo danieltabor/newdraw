@@ -441,6 +441,7 @@ static void usage(char* cmd) {
 	fprintf(stderr,"-half    : ANSI Half-Height\n");
 	fprintf(stderr,"-qchar   : ANSI Quarter-Character\n");
 	fprintf(stderr,"-six     : ANSI Sextant-Character\n");
+	fprintf(stderr,"-bra     : ANSI Braille-Character\n");
 	#ifdef USE_AALIB
 	fprintf(stderr,"-aa      : ASCII Art\n");
 	fprintf(stderr,"-aaext   : ASCII Art with extended characters\n");
@@ -727,6 +728,12 @@ int main(int argc, char** argv) {
 				usage(argv[0]);
 			}
 			enc.renderer = ENC_RENDER_SEXTANT;
+		}
+		else if( strcmp(argv[i],"-bra") == 0 ) {
+			if( enc.renderer ) {
+				usage(argv[0]);
+			}
+			enc.renderer = ENC_RENDER_BRAILLE;
 		}
 		#ifdef USE_AALIB
 		else if( strcmp(argv[i],"-aa") == 0 ) {
