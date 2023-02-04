@@ -1,4 +1,6 @@
 # newdraw
+![screenshot](https://raw.githubusercontent.com/danieltabor/newdraw/main/screenshot.png)
+
 This project started out as a Unicode termial art program for the terminal.
 This program was meant to be a replacement for the old DOS program TheDraw,
 but work natively on Unix-like systems and use a full Unicode (UTF-8) 
