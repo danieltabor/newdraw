@@ -1,14 +1,14 @@
 #Optional External Renderers
-USE_LIBSIXEL=0
+USE_LIBSIXEL=1
 USE_AALIB=1
 USE_LIBCACA=1
 
 #Optional video/audio playback support
-USE_FFMPEG=0
-USE_PORTAUDIO=0
+USE_FFMPEG=1
+USE_PORTAUDIO=1
 
 #Optional quantizer with dither
-USE_QUANTPNM=0
+USE_QUANTPNM=1
 
 #Optional debug output
 USE_DEBUG=0
@@ -20,7 +20,7 @@ LDFLAGS=
 IMG_LDFLAGS=
 VID_LDFLAGS=-lavformat -lavcodec -lavutil -lswscale
 DEPS=newdraw imgconvert
-HDEPS=term_encode.h utf8.h stb_image.h stb_image_resize.h edge_detect.h quant.h
+HDEPS=term_encode.h utf8.h stb_image.h stb_image_resize.h edge_detect.h quant.h apple2.h
 
 ifeq ($(USE_LIBSIXEL),1)
 	CFLAGS+=-DUSE_LIBSIXEL

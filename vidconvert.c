@@ -409,7 +409,7 @@ static void usage(char* cmd) {
 	fprintf(stderr," [-dither]");
 	#endif //USE_QUANTPNM
 	fprintf(stderr,"\n");
-	fprintf(stderr,"  [-crop x y w h] [-edge | -line | -glow | -hi 0xRRGGBB]\n");
+	fprintf(stderr,"  [-crop x y w h]  [([-edge | -line | -glow | -hi] 0xRRGGBB) | -apple2 ]\n");
 	fprintf(stderr,"  renderer vidfile\n");
 	fprintf(stderr,"\n");
 	fprintf(stderr,"-h     : Print usage message\n");
@@ -431,6 +431,7 @@ static void usage(char* cmd) {
 	fprintf(stderr,"-line  : Render edges as solid lines using specified color\n");
 	fprintf(stderr,"-glow  : Mix edge detection (scaled) with image\n");
 	fprintf(stderr,"-hi    : Mix edge line with images\n");
+	fprintf(stderr,"-apple2: Filter image to appear like an apple2 hi-res image\n");
 	fprintf(stderr,"\n");
 	fprintf(stderr,"-= Renderers =-\n");
 	#ifdef USE_LIBSIXEL
@@ -441,6 +442,7 @@ static void usage(char* cmd) {
 	fprintf(stderr,"-half    : ANSI Half-Height\n");
 	fprintf(stderr,"-qchar   : ANSI Quarter-Character\n");
 	fprintf(stderr,"-six     : ANSI Sextant-Character\n");
+	fprintf(stderr,"-bra     : ANSI Braille-Character\n");
 	#ifdef USE_AALIB
 	fprintf(stderr,"-aa      : ASCII Art\n");
 	fprintf(stderr,"-aaext   : ASCII Art with extended characters\n");
@@ -626,10 +628,10 @@ int main(int argc, char** argv) {
 			}
 		}
 		else if( strcmp(argv[i],"-edge") == 0 ) {
-			if( i >= argc-1 ) {
+			if( i >= argc-1 || enc.filter != ENC_FILTER_NONE ) {
 				usage(argv[0]);
 			}
-			enc.edge = ENC_EDGE_SCALE;
+			enc.filter = ENC_FILTER_EDGE_SCALE;
 			errno = 0;
 			enc.color_rgb = strtoul(argv[++i],0,16);
 			if( errno ) {
@@ -644,10 +646,10 @@ int main(int argc, char** argv) {
 			}
 		}
 		else if( strcmp(argv[i],"-line") == 0 ) {
-			if( i >= argc-1 ) {
+			if( i >= argc-1 || enc.filter != ENC_FILTER_NONE ) {
 				usage(argv[0]);
 			}
-			enc.edge = ENC_EDGE_LINE;
+			enc.filter = ENC_FILTER_EDGE_LINE;
 			errno = 0;
 			enc.color_rgb = strtoul(argv[++i],0,16);
 			if( errno ) {
@@ -662,10 +664,10 @@ int main(int argc, char** argv) {
 			}
 		}
 		else if( strcmp(argv[i],"-glow") == 0 ) {
-			if( i >= argc-1 ) {
+			if( i >= argc-1 || enc.filter != ENC_FILTER_NONE ) {
 				usage(argv[0]);
 			}
-			enc.edge = ENC_EDGE_GLOW;
+			enc.filter = ENC_FILTER_EDGE_GLOW;
 			errno = 0;
 			enc.color_rgb = strtoul(argv[++i],0,16);
 			if( errno ) {
@@ -673,15 +675,21 @@ int main(int argc, char** argv) {
 			}
 		}
 		else if( strcmp(argv[i],"-hi") == 0 ) {
-			if( i >= argc-1 ) {
+			if( i >= argc-1 || enc.filter != ENC_FILTER_NONE ) {
 				usage(argv[0]);
 			}
-			enc.edge = ENC_EDGE_HIGHLIGHT;
+			enc.filter = ENC_FILTER_EDGE_HIGHLIGHT;
 			errno = 0;
 			enc.color_rgb = strtoul(argv[++i],0,16);
 			if( errno ) {
 				usage(argv[0]);
 			}
+		}
+		else if( strcmp(argv[i],"-apple2") == 0 ) {
+			if( enc.filter != ENC_FILTER_NONE ) {
+				usage(argv[0]);
+			}
+			enc.filter = ENC_FILTER_APPLE2;
 		}
 		else if( strcmp(argv[i],"-frames") == 0 ) {
 			if( i >= argc-1 ) {
@@ -727,6 +735,12 @@ int main(int argc, char** argv) {
 				usage(argv[0]);
 			}
 			enc.renderer = ENC_RENDER_SEXTANT;
+		}
+		else if( strcmp(argv[i],"-bra") == 0 ) {
+			if( enc.renderer ) {
+				usage(argv[0]);
+			}
+			enc.renderer = ENC_RENDER_BRAILLE;
 		}
 		#ifdef USE_AALIB
 		else if( strcmp(argv[i],"-aa") == 0 ) {

@@ -48,13 +48,14 @@
 #define ENC_RENDER_CACABLK   15
 
 //////////////////////////////
-// Edge Decection Processing
+// Image Filter Processing
 //////////////////////////////
-#define ENC_EDGE_NONE      0
-#define ENC_EDGE_SCALE     1
-#define ENC_EDGE_LINE      2
-#define ENC_EDGE_GLOW      3
-#define ENC_EDGE_HIGHLIGHT 4
+#define ENC_FILTER_NONE           0
+#define ENC_FILTER_EDGE_SCALE     1
+#define ENC_FILTER_EDGE_LINE      2
+#define ENC_FILTER_EDGE_GLOW      3
+#define ENC_FILTER_EDGE_HIGHLIGHT 4
+#define ENC_FILTER_APPLE2         5
 
 typedef struct {
 	size_t x;
@@ -125,8 +126,8 @@ typedef struct {
 	crop_rect_t crop;
 	
 	//Optional edge processing
-	//One of ENC_EDGE_*
-	uint8_t edge;
+	//One of ENC_FILTER_*
+	uint8_t filter;
 	
 	//Color value to use for any process that requires
 	//a color (ie edge dection).  

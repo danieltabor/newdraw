@@ -46,6 +46,8 @@
 #include "quant.h"
 #define EDGE_DETECT_IMPLEMENTATION
 #include "edge_detect.h"
+#define APPLE2_IMPLEMENTATION
+#include "apple2.h"
 
 #if USE_LIBSIXEL
 #include <sixel/sixel.h>
@@ -97,7 +99,6 @@ static int standard_palette[] = {
 	0xa8a8a8,0xb2b2b2,0xbcbcbc,0xc6c6c6,0xd0d0d0,0xdadada,0xe4e4e4,0xeeeeee};
 static uint8_t fg16codes[] = {30, 31, 32, 33, 34, 35, 36, 37,  90,  91,  92,  93,  94,  95,  96,  97};
 static uint8_t bg16codes[] = {40, 41, 42, 43, 44, 45, 46, 47, 100, 101, 102, 103, 104, 105, 106, 107};
-
 
 static size_t findStdColorRGB(size_t palsize, uint32_t rgb) {
 	size_t i;
@@ -1345,19 +1346,22 @@ static int prepImage( term_encode_t* enc, float pixels_per_col, float pixel_rati
 		#endif
 	}
 	
-	//Perform edge detection
-	if( enc->edge != ENC_EDGE_NONE ) {
-		if( enc->edge == ENC_EDGE_SCALE ) {
+	//Perform filtering/processing
+	if( enc->filter != ENC_FILTER_NONE ) {
+		if( enc->filter == ENC_FILTER_EDGE_SCALE ) {
 			edge_scale( imgpixels, enc->color_rgb, enc->invert, 0, imgpixels, imgwidth, imgheight );
 		}
-		else if( enc->edge == ENC_EDGE_LINE ) {
+		else if( enc->filter == ENC_FILTER_EDGE_LINE ) {
 			edge_scale( imgpixels, enc->color_rgb, enc->invert, EDGE_DEFAULT_THRESHOLD, imgpixels, imgwidth, imgheight ); 
 		}
-		else if( enc->edge == ENC_EDGE_GLOW ) {
+		else if( enc->filter == ENC_FILTER_EDGE_GLOW ) {
 			edge_highlight( imgpixels, enc->color_rgb, 0, 1, imgpixels, imgwidth, imgheight );
 		}
-		else if( enc->edge == ENC_EDGE_HIGHLIGHT ) {
+		else if( enc->filter == ENC_FILTER_EDGE_HIGHLIGHT ) {
 			edge_highlight( imgpixels, enc->color_rgb, EDGE_DEFAULT_THRESHOLD, 0, imgpixels, imgwidth, imgheight );
+		}
+		else if( enc->filter == ENC_FILTER_APPLE2 ) {
+			apple2( imgpixels, imgpixels, imgwidth, imgheight, 0 );
 		}
 	}
 	
