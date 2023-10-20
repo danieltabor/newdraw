@@ -1,14 +1,14 @@
 #Optional External Renderers
-USE_LIBSIXEL=1
+USE_LIBSIXEL=0
 USE_AALIB=1
 USE_LIBCACA=1
 
 #Optional video/audio playback support
-USE_FFMPEG=1
-USE_PORTAUDIO=1
+USE_FFMPEG=0
+USE_PORTAUDIO=0
 
 #Optional quantizer with dither
-USE_QUANTPNM=1
+USE_QUANTPNM=0
 
 #Optional debug output
 USE_DEBUG=0
