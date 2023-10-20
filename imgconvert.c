@@ -43,7 +43,7 @@ static void usage(char* cmd) {
 	#ifdef USE_QUANTPNM
 	fprintf(stderr,"[-dither] ");
 	#endif //USE_QUANTPNM
-	fprintf(stderr,"[-crop x y w h]  [([-edge | -line | -glow | -hi] 0xRRGGBB) | -apple2 ]\n");
+	fprintf(stderr,"[-crop x y w h]  [([-edge | -line | -glow | -hi | -apple2bw] 0xRRGGBB) | -apple2 ]\n");
 	fprintf(stderr,"     renderer imgfile\n");
 	fprintf(stderr,"\n");
 	fprintf(stderr,"-h     : Print usage message\n");
@@ -59,11 +59,12 @@ static void usage(char* cmd) {
 	fprintf(stderr,"-crop  : Crop the image before processing\n");
 	fprintf(stderr,"\n");
 	fprintf(stderr,"-= Filters =-\n");
-	fprintf(stderr,"-edge  : Render edge detection (scaled) using specified color\n");
-	fprintf(stderr,"-line  : Render edges as solid lines using specified color\n");
-	fprintf(stderr,"-glow  : Mix edge detection (scaled) with image\n");
-	fprintf(stderr,"-hi    : Mix edge line with images\n");
-	fprintf(stderr,"-apple2: Filter image to appear like an apple2 hi-res image\n");
+	fprintf(stderr,"-edge     : Render edge detection (scaled) using specified color\n");
+	fprintf(stderr,"-line     : Render edges as solid lines using specified color\n");
+	fprintf(stderr,"-glow     : Mix edge detection (scaled) with image\n");
+	fprintf(stderr,"-hi       : Mix edge line with images\n");
+	fprintf(stderr,"-apple2bw : Render like an apple2 hi-res black and white  image\n");
+	fprintf(stderr,"-apple2   : Render like an apple2 hi-res color image\n");
 	fprintf(stderr,"\n");
 	fprintf(stderr,"-= Renderers =-\n");
 	#ifdef USE_LIBSIXEL
@@ -249,6 +250,17 @@ int main(int argc, char** argv) {
 				usage(argv[0]);
 			}
 			enc.filter = ENC_FILTER_EDGE_HIGHLIGHT;
+			errno = 0;
+			enc.color_rgb = strtoul(argv[++i],0,16);
+			if( errno ) {
+				usage(argv[0]);
+			}
+		}
+		else if( strcmp(argv[i],"-apple2bw") == 0 ) {
+			if( i >= argc-1 || enc.filter != ENC_FILTER_NONE ) {
+				usage(argv[0]);
+			}
+			enc.filter = ENC_FILTER_APPLE2_BW;
 			errno = 0;
 			enc.color_rgb = strtoul(argv[++i],0,16);
 			if( errno ) {

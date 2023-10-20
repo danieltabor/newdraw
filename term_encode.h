@@ -56,6 +56,7 @@
 #define ENC_FILTER_EDGE_GLOW      3
 #define ENC_FILTER_EDGE_HIGHLIGHT 4
 #define ENC_FILTER_APPLE2         5
+#define ENC_FILTER_APPLE2_BW      6
 
 typedef struct {
 	size_t x;

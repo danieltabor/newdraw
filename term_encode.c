@@ -1363,6 +1363,9 @@ static int prepImage( term_encode_t* enc, float pixels_per_col, float pixel_rati
 		else if( enc->filter == ENC_FILTER_APPLE2 ) {
 			apple2( imgpixels, imgpixels, imgwidth, imgheight, 0 );
 		}
+		else if( enc->filter == ENC_FILTER_APPLE2_BW ) {
+			apple2_bw( imgpixels, imgpixels, imgwidth, imgheight, 0, enc->color_rgb );
+		}
 	}
 	
 	//Black and White

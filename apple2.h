@@ -29,6 +29,7 @@
 #include <stdint.h>
 
 void apple2( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height, int scanline );
+void apple2_bw( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height, int scanline, uint32_t fg );
 
 #ifdef APPLE2_IMPLEMENTATION
 
@@ -37,13 +38,12 @@ static uint32_t apple2_palette[2][4] = {
 	{0x000000,0xdc681f,0x48a1e3,0xffffff},
 };
 
-static uint32_t apply_palette( uint8_t *dst, uint8_t *src, uint32_t *pal ) {
+static uint32_t apply_palette( uint8_t *dst, uint8_t *dstidx, uint8_t *src, uint32_t *pal ) {
 	uint32_t min_dist;
-	size_t i, p;
+	size_t i, p, c;
 	int channel_dist;
 	uint32_t color_dist;
 	uint32_t total_dist = 0;
-	uint32_t color;
 	
 	for( i=0; i<7; i++ ) {
 		min_dist = 0xFFFFFFFF;
@@ -59,13 +59,18 @@ static uint32_t apply_palette( uint8_t *dst, uint8_t *src, uint32_t *pal ) {
 			color_dist   = color_dist+channel_dist;
 			if( color_dist < min_dist ) {
 				min_dist = color_dist;
-				color = pal[p];
+				c = p;
 			}
 		}
 		total_dist = total_dist + min_dist;
-		dst[3*i]   = (color>>16)&0xFF;
-		dst[3*i+1] = (color>>8)&0xFF;
-		dst[3*i+2] = color&0xFF;
+		if( dst ) {
+			dst[3*i]   = (pal[c]>>16)&0xFF;
+			dst[3*i+1] = (pal[c]>>8)&0xFF;
+			dst[3*i+2] = pal[c]&0xFF;
+		}
+		if( dstidx ) {
+			dstidx[i] = c;
+		}
 	}
 	return total_dist/7;
 }
@@ -90,8 +95,8 @@ void apple2( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t heig
 					memset(chunk_pixels+3*i,0,3);
 				}
 			}
-			pal0_dist = apply_palette( pal0_pixels, chunk_pixels, apple2_palette[0] );
-			pal1_dist = apply_palette( pal1_pixels, chunk_pixels, apple2_palette[1] );
+			pal0_dist = apply_palette( pal0_pixels, 0, chunk_pixels, apple2_palette[0] );
+			pal1_dist = apply_palette( pal1_pixels, 0, chunk_pixels, apple2_palette[1] );
 			if( pal0_dist < pal1_dist ) {
 				pal_pixels = pal0_pixels;
 			}
@@ -101,6 +106,77 @@ void apple2( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t heig
 			for( i=0; i<7; i++ ) {
 				if( x+i < width ) {
 					memcpy(dst_pixels+3*(y*width+x+i), pal_pixels+3*i ,3);
+				}
+			}
+		}
+	}
+}
+
+void apple2_bw( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height, int scanline, uint32_t fg ) {
+	size_t y, x, i;
+	uint8_t chunk_pixels[21];
+	uint8_t *pal_idx;
+	uint8_t pal0_idx[7];
+	uint8_t pal1_idx[7];
+	uint32_t pal0_dist;
+	uint32_t pal1_dist;
+	uint8_t r,g,b;
+	
+	for( y=0; y<height; y++ ) {
+		if( scanline && y&1 ) { continue; }
+		for( x=0; x<width; x=x+14 ) {
+			for( i=0; i<14; i=i+2 ) {
+				if( x+i < width ) {
+					r = src_pixels[3*(y*width+x+i)];
+					g = src_pixels[3*(y*width+x+i)+1];
+					b = src_pixels[3*(y*width+x+i)+2];
+					if( x+i+1 < width ) {
+						r = (r + src_pixels[3*(y*width+x+i+1)]) / 2;
+						g = (g + src_pixels[3*(y*width+x+i+1)+1]) / 2;
+						b = (b + src_pixels[3*(y*width+x+i+1)+2]) / 2;
+					}
+				}
+				else {
+					r = 0;
+					g = 0;
+					b = 0;
+				}
+				chunk_pixels[3*(i/2)] = r;
+				chunk_pixels[3*(i/2)+1] = g;
+				chunk_pixels[3*(i/2)+2] = b;
+			}
+			pal0_dist = apply_palette( 0, pal0_idx, chunk_pixels, apple2_palette[0] );
+			pal1_dist = apply_palette( 0, pal1_idx, chunk_pixels, apple2_palette[1] );
+			if( pal0_dist < pal1_dist ) {
+				pal_idx = pal0_idx;
+			}
+			else {
+				pal_idx = pal1_idx;
+			}
+			for( i=0; i<14; i=i+2 ) {
+				if( x+i < width ) {
+					if( pal_idx[i/2] & 2 ) {
+						dst_pixels[3*(y*width+x+i)]   = (fg>>16)&0xff;
+						dst_pixels[3*(y*width+x+i)+1] = (fg>>8)&0xff;
+						dst_pixels[3*(y*width+x+i)+2] = fg&0xff;
+					}
+					else {
+						dst_pixels[3*(y*width+x+i)]   = 0;
+						dst_pixels[3*(y*width+x+i)+1] = 0;
+						dst_pixels[3*(y*width+x+i)+2] = 0;
+					}
+					if( x+i+1 < width ) {
+						if( pal_idx[i/2] & 1 ) {
+							dst_pixels[3*(y*width+x+i+1)]   = (fg>>16)&0xff;
+							dst_pixels[3*(y*width+x+i+1)+1] = (fg>>8)&0xff;
+							dst_pixels[3*(y*width+x+i+1)+2] = fg&0xff;
+						}
+						else {
+							dst_pixels[3*(y*width+x+i+1)]   = 0;
+							dst_pixels[3*(y*width+x+i+1)+1] = 0;
+							dst_pixels[3*(y*width+x+i+1)+2] = 0;
+						}
+					}
 				}
 			}
 		}
