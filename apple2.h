@@ -28,8 +28,16 @@
 
 #include <stdint.h>
 
-void apple2( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height, int scanline );
-void apple2_bw( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height, int scanline, uint32_t fg );
+void apple2( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height, int bw, uint32_t fg );
+
+#ifdef APPLE2_UNREALISTIC
+//Allows a full horizontal pixel resolution.
+//The normal apple2 filter averages pixel pairs, and then two black&white pixels are generated from each pair.
+//Similarly two identical (NTSC artifact) color pixels are generated for each pair, thus halfing the effective
+//horizontal resolution in color.  This function processes each indvidual src pixel, and considers a 7 pixels per 
+//palette selection.
+void apple2_full( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height );
+#endif //APPLE2_UNREALISTIC
 
 #ifdef APPLE2_IMPLEMENTATION
 
@@ -75,7 +83,99 @@ static uint32_t apply_palette( uint8_t *dst, uint8_t *dstidx, uint8_t *src, uint
 	return total_dist/7;
 }
 
-void apple2( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height, int scanline ) {
+void apple2( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height, int bw, uint32_t fg ) {
+	size_t y, x, i;
+	uint8_t chunk_pixels[21];
+	uint8_t *pal_idx;
+	uint8_t *pal_pixels;
+	uint8_t pal0_pixels[21];
+	uint8_t pal1_pixels[21];
+	uint8_t pal0_idx[7];
+	uint8_t pal1_idx[7];
+	uint32_t pal0_dist;
+	uint32_t pal1_dist;
+	uint8_t r,g,b;
+	
+	for( y=0; y<height; y++ ) {
+		for( x=0; x<width; x=x+14 ) {
+			for( i=0; i<14; i=i+2 ) {
+				if( x+i < width ) {
+					r = src_pixels[3*(y*width+x+i)];
+					g = src_pixels[3*(y*width+x+i)+1];
+					b = src_pixels[3*(y*width+x+i)+2];
+					if( x+i+1 < width ) {
+						r = (r + src_pixels[3*(y*width+x+i+1)]) / 2;
+						g = (g + src_pixels[3*(y*width+x+i+1)+1]) / 2;
+						b = (b + src_pixels[3*(y*width+x+i+1)+2]) / 2;
+					}
+				}
+				else {
+					r = 0;
+					g = 0;
+					b = 0;
+				}
+				chunk_pixels[3*(i/2)] = r;
+				chunk_pixels[3*(i/2)+1] = g;
+				chunk_pixels[3*(i/2)+2] = b;
+			}
+			pal0_dist = apply_palette( pal0_pixels, pal0_idx, chunk_pixels, apple2_palette[0] );
+			pal1_dist = apply_palette( pal1_pixels, pal1_idx, chunk_pixels, apple2_palette[1] );
+			if( pal0_dist < pal1_dist ) {
+				pal_idx    = pal0_idx;
+				pal_pixels = pal0_pixels;
+			}
+			else {
+				pal_idx    = pal1_idx;
+				pal_pixels = pal1_pixels;
+			}
+			if( bw ) {
+				for( i=0; i<14; i=i+2 ) {
+					if( x+i < width ) {
+						if( pal_idx[i/2] & 2 ) {
+							dst_pixels[3*(y*width+x+i)]   = (fg>>16)&0xff;
+							dst_pixels[3*(y*width+x+i)+1] = (fg>>8)&0xff;
+							dst_pixels[3*(y*width+x+i)+2] = fg&0xff;
+						}
+						else {
+							dst_pixels[3*(y*width+x+i)]   = 0;
+							dst_pixels[3*(y*width+x+i)+1] = 0;
+							dst_pixels[3*(y*width+x+i)+2] = 0;
+						}
+						if( x+i+1 < width ) {
+							if( pal_idx[i/2] & 1 ) {
+								dst_pixels[3*(y*width+x+i+1)]   = (fg>>16)&0xff;
+								dst_pixels[3*(y*width+x+i+1)+1] = (fg>>8)&0xff;
+								dst_pixels[3*(y*width+x+i+1)+2] = fg&0xff;
+							}
+							else {
+								dst_pixels[3*(y*width+x+i+1)]   = 0;
+								dst_pixels[3*(y*width+x+i+1)+1] = 0;
+								dst_pixels[3*(y*width+x+i+1)+2] = 0;
+							}
+						}
+					}
+				}
+			}
+			else {
+				for( i=0; i<14; i=i+2 ) {
+					if( x+i < width ) {
+						dst_pixels[3*(y*width+x+i)]   = pal_pixels[3*(i/2)];
+						dst_pixels[3*(y*width+x+i)+1] = pal_pixels[3*(i/2)+1];
+						dst_pixels[3*(y*width+x+i)+2] = pal_pixels[3*(i/2)+2];
+						if( x+i+1 < width ) {
+							dst_pixels[3*(y*width+x+i+1)]   = pal_pixels[3*(i/2)];
+							dst_pixels[3*(y*width+x+i+1)+1] = pal_pixels[3*(i/2)+1];
+							dst_pixels[3*(y*width+x+i+1)+2] = pal_pixels[3*(i/2)+2];
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+#ifdef APPLE2_UNREALISTIC
+void apple2_full( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height ) {
 	size_t y, x, i;
 	uint8_t chunk_pixels[21];
 	uint8_t *pal_pixels;
@@ -85,7 +185,6 @@ void apple2( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t heig
 	uint32_t pal1_dist;
 	
 	for( y=0; y<height; y++ ) {
-		if( scanline && y&1 ) { continue; }
 		for( x=0; x<width; x=x+7 ) {
 			for( i=0; i<7; i++ ) {
 				if( x+i < width ) {
@@ -111,77 +210,7 @@ void apple2( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t heig
 		}
 	}
 }
-
-void apple2_bw( uint8_t *dst_pixels, uint8_t *src_pixels, size_t width, size_t height, int scanline, uint32_t fg ) {
-	size_t y, x, i;
-	uint8_t chunk_pixels[21];
-	uint8_t *pal_idx;
-	uint8_t pal0_idx[7];
-	uint8_t pal1_idx[7];
-	uint32_t pal0_dist;
-	uint32_t pal1_dist;
-	uint8_t r,g,b;
-	
-	for( y=0; y<height; y++ ) {
-		if( scanline && y&1 ) { continue; }
-		for( x=0; x<width; x=x+14 ) {
-			for( i=0; i<14; i=i+2 ) {
-				if( x+i < width ) {
-					r = src_pixels[3*(y*width+x+i)];
-					g = src_pixels[3*(y*width+x+i)+1];
-					b = src_pixels[3*(y*width+x+i)+2];
-					if( x+i+1 < width ) {
-						r = (r + src_pixels[3*(y*width+x+i+1)]) / 2;
-						g = (g + src_pixels[3*(y*width+x+i+1)+1]) / 2;
-						b = (b + src_pixels[3*(y*width+x+i+1)+2]) / 2;
-					}
-				}
-				else {
-					r = 0;
-					g = 0;
-					b = 0;
-				}
-				chunk_pixels[3*(i/2)] = r;
-				chunk_pixels[3*(i/2)+1] = g;
-				chunk_pixels[3*(i/2)+2] = b;
-			}
-			pal0_dist = apply_palette( 0, pal0_idx, chunk_pixels, apple2_palette[0] );
-			pal1_dist = apply_palette( 0, pal1_idx, chunk_pixels, apple2_palette[1] );
-			if( pal0_dist < pal1_dist ) {
-				pal_idx = pal0_idx;
-			}
-			else {
-				pal_idx = pal1_idx;
-			}
-			for( i=0; i<14; i=i+2 ) {
-				if( x+i < width ) {
-					if( pal_idx[i/2] & 2 ) {
-						dst_pixels[3*(y*width+x+i)]   = (fg>>16)&0xff;
-						dst_pixels[3*(y*width+x+i)+1] = (fg>>8)&0xff;
-						dst_pixels[3*(y*width+x+i)+2] = fg&0xff;
-					}
-					else {
-						dst_pixels[3*(y*width+x+i)]   = 0;
-						dst_pixels[3*(y*width+x+i)+1] = 0;
-						dst_pixels[3*(y*width+x+i)+2] = 0;
-					}
-					if( x+i+1 < width ) {
-						if( pal_idx[i/2] & 1 ) {
-							dst_pixels[3*(y*width+x+i+1)]   = (fg>>16)&0xff;
-							dst_pixels[3*(y*width+x+i+1)+1] = (fg>>8)&0xff;
-							dst_pixels[3*(y*width+x+i+1)+2] = fg&0xff;
-						}
-						else {
-							dst_pixels[3*(y*width+x+i+1)]   = 0;
-							dst_pixels[3*(y*width+x+i+1)+1] = 0;
-							dst_pixels[3*(y*width+x+i+1)+2] = 0;
-						}
-					}
-				}
-			}
-		}
-	}
-}
+#endif //APPLE2_UNREALISTIC
 
 #endif //APPLE2_IMPLEMENTATION
 #endif //__APPLE2_H__
